@@ -3,6 +3,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Waher.Events;
 using Waher.Events.Console;
+using Waher.Events.MQTT;
 using Waher.Networking.MQTT;
 using Waher.Persistence;
 using Waher.Persistence.Files;
@@ -26,6 +27,7 @@ namespace Sensor
 		{
 			FilesProvider DBProvider = null;
 			MqttClient mqtt = null;
+			string DeviceID = string.Empty;
 
 			try
 			{
@@ -47,6 +49,18 @@ namespace Sensor
 
 				// Starting internal modules
 				await Types.StartAllModules(60000);
+
+				// Configuring Device ID
+
+				DeviceID = await RuntimeSettings.GetAsync("Device.ID", string.Empty);
+
+				if (string.IsNullOrEmpty(DeviceID))
+				{
+					Console.Out.WriteLine("Device ID has not been configured. Please provide the Device ID that will be used by this application.");
+
+					DeviceID = UserInput("Device ID", DeviceID);
+					await RuntimeSettings.SetAsync("Device.ID", DeviceID);
+				}			
 
 				// Configuring and connecting to MQTT Server
 
@@ -87,7 +101,7 @@ namespace Sensor
 						mqtt = null;
 					}
 
-					Log.Informational("Connecting to MQTT Broker...");
+					Log.Informational("Connecting to MQTT Broker...", DeviceID);
 
 					TaskCompletionSource<bool> WaitForConnect = new TaskCompletionSource<bool>();
 
@@ -95,20 +109,20 @@ namespace Sensor
 
 					mqtt.OnConnectionError += (_, e) =>
 					{
-						Log.Error(e.Message);
+						Log.Error(e.Message, DeviceID);
 						WaitForConnect.TrySetResult(false);
 						return Task.CompletedTask;
 					};
 
 					mqtt.OnError += (_, e) =>
 					{
-						Log.Error(e.Message);
+						Log.Error(e.Message, DeviceID);
 						return Task.CompletedTask;
 					};
 
 					mqtt.OnStateChanged += (_, NewState) =>
 					{
-						Log.Informational(NewState.ToString());
+						Log.Informational(NewState.ToString(), DeviceID);
 
 						switch (NewState)
 						{
@@ -129,6 +143,11 @@ namespace Sensor
 				}
 				while (!MqttConnected);
 
+				// Register MQTT event sink, allowing developer to follow what happens with devices.
+
+				Log.Register(new MqttEventSink("MQTT Event Sink", mqtt, "HardenMqtt/Events", true));
+				Log.Informational("Sensor connected.", DeviceID);
+
 				// Configure CTRL+Z to close application gracefully.
 
 				bool Continue = true;
@@ -141,7 +160,7 @@ namespace Sensor
 
 				// Normal operation
 
-				Log.Informational("Sensor application started... Press CTRL+C to terminate the application.");
+				Log.Informational("Sensor application started... Press CTRL+C to terminate the application.", DeviceID);
 
 				while (Continue)
 					await Task.Delay(100);
@@ -149,13 +168,13 @@ namespace Sensor
 			catch (Exception ex)
 			{
 				// Display exception terminating application
-				Log.Alert(ex);
+				Log.Alert(ex, DeviceID);
 			}
 			finally
 			{
 				// Shut down database gracefully
 
-				Log.Informational("Sensor application stopping...");
+				Log.Informational("Sensor application stopping...", DeviceID);
 
 				if (!(mqtt is null))
 				{
