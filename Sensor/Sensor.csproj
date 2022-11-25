@@ -5,4 +5,16 @@
     <TargetFramework>netcoreapp3.1</TargetFramework>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Waher.Events" Version="1.1.2" />
+    <PackageReference Include="Waher.Events.Console" Version="1.1.0" />
+    <PackageReference Include="Waher.Events.MQTT" Version="1.2.3" />
+    <PackageReference Include="Waher.Persistence" Version="1.8.2" />
+    <PackageReference Include="Waher.Persistence.Files" Version="1.9.4" />
+    <PackageReference Include="Waher.Runtime.Inventory" Version="1.1.2" />
+    <PackageReference Include="Waher.Runtime.Inventory.Loader" Version="1.0.9" />
+    <PackageReference Include="Waher.Runtime.Settings" Version="1.0.10" />
+    <PackageReference Include="Waher.Runtime.Timing" Version="1.0.5" />
+  </ItemGroup>
+
 </Project>

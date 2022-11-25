@@ -3,15 +3,17 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.4.33110.190
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sensor", "Sensor\Sensor.csproj", "{764A36BA-DD38-4D33-8943-8575067D08F9}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Sensor", "Sensor\Sensor.csproj", "{764A36BA-DD38-4D33-8943-8575067D08F9}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Display", "Display\Display.csproj", "{38ED31DC-DC2D-4520-8E4A-9BA0A6964BA6}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Display", "Display\Display.csproj", "{38ED31DC-DC2D-4520-8E4A-9BA0A6964BA6}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Troll", "Troll\Troll.csproj", "{1DD7A241-D8BF-4EB5-93D3-60EB30E4F565}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Troll", "Troll\Troll.csproj", "{1DD7A241-D8BF-4EB5-93D3-60EB30E4F565}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Documentation", "Documentation", "{58AFD060-912E-47A5-889F-AA9B576DE020}"
 	ProjectSection(SolutionItems) = preProject
+		LAB.md = LAB.md
 		README.md = README.md
+		LICENSE.md = LICENSE.md
 	EndProjectSection
 EndProject
 Global
