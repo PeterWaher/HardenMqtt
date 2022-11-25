@@ -14,7 +14,6 @@
     <PackageReference Include="Waher.Runtime.Inventory" Version="1.1.2" />
     <PackageReference Include="Waher.Runtime.Inventory.Loader" Version="1.0.9" />
     <PackageReference Include="Waher.Runtime.Settings" Version="1.0.10" />
-    <PackageReference Include="Waher.Runtime.Timing" Version="1.0.5" />
   </ItemGroup>
 
 </Project>
