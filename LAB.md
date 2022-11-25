@@ -56,7 +56,7 @@ Tasks:
 
 Note: Groups may have created secure programs in session 1, causing the other groups to fail to find ways to make the programs fail. Although they do not receive points for that in session 1, the group creating safe programs, manage to lower the scores of the other groups in this session, improving their score relative to the average.
 
-Session 3 - Cybersecurity (6 points max
+Session 3 - Cybersecurity (6 points max)
 ------------------------------------------
 
 Objectives to learn:

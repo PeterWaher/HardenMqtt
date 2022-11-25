@@ -26,42 +26,19 @@ Troll
 For the Teacher
 -----------------
 
-You can find a porposed [Lab](LAB.md) in this repository, divided into three sessions, where studens learn to communicate over
+You can find a proposed [Lab](LAB.md) in this repository, divided into three sessions, where studens learn to communicate over
 MQTT, then learn about common vulnerabilities, and finally how to harden their solutions for these vulnerabilities. The projects
 available in this repository can be run simultaneously during the lab, everyone using the same MQTT broker as shared infrastructure.
 
 Other repositories of interest
 ----------------------------------
 
-[Mastering Internet of Things](https://github.com/PeterWaher/MIoT)
-
-:	Contains multiple projects for sensors, actuators and concentrators using different protocols for comparison (such as
-HTTP, CoAP, LWM2M, MQTT and XMPP). All projects and associated information are described in a book with the same name.
-
-[OpenWeatherMapSensor](https://github.com/PeterWaher/OpenWeatherMapSensor)
-
-:	Contains a simple provisionable sensor publishing sensor data using the XMPP protocol.
-
-[IoTGateway](https://github.com/PeterWaher/IoTGateway)
-
-:	Contains multiple libraries for creating distributed applications for IoT, as well as an IoT Gateway host and client applications.
-
-[TAG Digital ID](https://github.com/Trust-Anchor-Group/IdApp)
-
-:	A Digital ID App that can be used for communicating with IoT devices, as well as to provision access to them, among many other
-things.
-
-[TAG ComSim](https://github.com/Trust-Anchor-Group/ComSim)
-
-:	A communications-based simulator, which allows you to create stochastic simulation models to simulate large networks of
-IoT devices, as well as human users.
-
-[TAG LegalLab](https://github.com/Trust-Anchor-Group/LegalLab)
-
-:	A tool for creating smart contracts that can be used for automation across domains in IoT and smart societies.
-
-[IEEE XMPP IoT Interfaces](https://gitlab.com/IEEE-SA/XMPPI/IoT)
-
-:	A repository hosted by IEEE for IoT Harmonization for smart societies. Contains the technical reference information necessary
-to understand cross-domain interoperability, digital identities, smart contracts, decision support and automated, legally binding, 
-decision making, as the basis for automation across domains on the Internet.
+| Repository                                                                 | Description |
+|:---------------------------------------------------------------------------|:------------|
+| [Mastering Internet of Things](https://github.com/PeterWaher/MIoT)         | Contains multiple projects for sensors, actuators and concentrators using different protocols for comparison (such as HTTP, CoAP, LWM2M, MQTT and XMPP). All projects and associated information are described in a book with the same name. |
+| [OpenWeatherMapSensor](https://github.com/PeterWaher/OpenWeatherMapSensor) | Contains a simple provisionable sensor publishing sensor data using the XMPP protocol. |
+| [IoTGateway](https://github.com/PeterWaher/IoTGateway)                     | Contains multiple libraries for creating distributed applications for IoT, as well as an IoT Gateway host and client applications. |
+| [TAG Digital ID](https://github.com/Trust-Anchor-Group/IdApp)              | A Digital ID App that can be used for communicating with IoT devices, as well as to provision access to them, among many other things. |
+| [TAG ComSim](https://github.com/Trust-Anchor-Group/ComSim)                 | A communications-based simulator, which allows you to create stochastic simulation models to simulate large networks of IoT devices, as well as human users. |
+| [TAG LegalLab](https://github.com/Trust-Anchor-Group/LegalLab)             | A tool for creating smart contracts that can be used for automation across domains in IoT and smart societies. |
+| [IEEE XMPP IoT Interfaces](https://gitlab.com/IEEE-SA/XMPPI/IoT)           | A repository hosted by IEEE for IoT Harmonization for smart societies. Contains the technical reference information necessary to understand cross-domain interoperability, digital identities, smart contracts, decision support and automated, legally binding, decision making, as the basis for automation across domains on the Internet. |
