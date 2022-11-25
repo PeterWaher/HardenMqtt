@@ -2,6 +2,7 @@
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Waher.Content;
 using Waher.Events;
 using Waher.Events.Console;
 using Waher.Events.MQTT;
@@ -349,6 +350,7 @@ namespace Sensor
 		private static async Task ReportSensorData(WeatherInformation SensorData, MqttClient Mqtt, string DeviceID)
 		{
 			await ReportSensorDataUnsecuredUnstructured(SensorData, Mqtt, "HardenMqtt/Unstructured/" + DeviceID);
+			await ReportSensorDataUnsecuredStructured(SensorData, Mqtt, "HardenMqtt/Structured/" + DeviceID);
 		}
 
 		/// <summary>
@@ -383,6 +385,19 @@ namespace Sensor
 			await PublishString(Mqtt, BaseTopic + "/WeatherId", SensorData.WeatherId?.ToString() ?? string.Empty);
 			await PublishString(Mqtt, BaseTopic + "/Sunrise", SensorData.Sunrise.ToString());
 			await PublishString(Mqtt, BaseTopic + "/Sunset", SensorData.Sunset.ToString());
+		}
+
+		/// <summary>
+		/// Publishes sensor data to MQTT in an unsecure, but structured manner.
+		/// </summary>
+		/// <param name="SensorData">Collected Sensor Data</param>
+		/// <param name="Mqtt">Connected MQTT Client</param>
+		/// <param name="BaseTopic">Base Topic</param>
+		private static async Task ReportSensorDataUnsecuredStructured(WeatherInformation SensorData, MqttClient Mqtt,
+			string BaseTopic)
+		{
+			string Json = JSON.Encode(SensorData, false);
+			await PublishString(Mqtt, BaseTopic, Json);
 		}
 
 		/// <summary>
