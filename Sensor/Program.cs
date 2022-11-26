@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Microsoft.CodeAnalysis;
+using System;
+using System.Collections.Generic;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -7,18 +9,21 @@ using Waher.Events;
 using Waher.Events.Console;
 using Waher.Events.MQTT;
 using Waher.Networking.MQTT;
+using Waher.Networking.XMPP.Sensor;
 using Waher.Persistence;
 using Waher.Persistence.Files;
 using Waher.Runtime.Inventory;
 using Waher.Runtime.Inventory.Loader;
 using Waher.Runtime.Settings;
+using Waher.Things;
+using Waher.Things.SensorData;
 
 namespace Sensor
 {
 	/// <summary>
 	/// This project implements a simple sensor that gets its values from the Internet and publishes it on an MQTT Broker. 
-	/// It publishes the information in four different ways: Unsecure and Unstructured, Unsecure and Structured, 
-	/// Secured but public, Secured and Confidential.
+	/// It publishes the information in five different ways: Unstructured, Structured, Interoperable (first three unsecured), 
+	/// and public, Confidential (last two secured).
 	/// </summary>
 	internal class Program
 	{
@@ -349,8 +354,9 @@ namespace Sensor
 		/// <param name="Mqtt">Connected MQTT Client</param>
 		private static async Task ReportSensorData(WeatherInformation SensorData, MqttClient Mqtt, string DeviceID)
 		{
-			await ReportSensorDataUnsecuredUnstructured(SensorData, Mqtt, "HardenMqtt/Unstructured/" + DeviceID);
-			await ReportSensorDataUnsecuredStructured(SensorData, Mqtt, "HardenMqtt/Structured/" + DeviceID);
+			await ReportSensorDataUnsecuredUnstructured(SensorData, Mqtt, "HardenMqtt/Unsecured/Unstructured/" + DeviceID);
+			await ReportSensorDataUnsecuredStructured(SensorData, Mqtt, "HardenMqtt/Unsecured/Structured/" + DeviceID);
+			await ReportSensorDataUnsecuredInteroperable(SensorData, Mqtt, "HardenMqtt/Unsecured/Interoperable/" + DeviceID);
 		}
 
 		/// <summary>
@@ -398,6 +404,154 @@ namespace Sensor
 		{
 			string Json = JSON.Encode(SensorData, false);
 			await PublishString(Mqtt, BaseTopic, Json);
+		}
+
+		/// <summary>
+		/// Publishes sensor data to MQTT in an unsecure, but structured manner.
+		/// </summary>
+		/// <param name="SensorData">Collected Sensor Data</param>
+		/// <param name="Mqtt">Connected MQTT Client</param>
+		/// <param name="BaseTopic">Base Topic</param>
+		private static async Task ReportSensorDataUnsecuredInteroperable(WeatherInformation SensorData, MqttClient Mqtt,
+			string BaseTopic)
+		{
+			List<Field> Result = new List<Field>();
+
+			if (!string.IsNullOrEmpty(SensorData.Name))
+			{
+				Result.Add(new StringField(ThingReference.Empty, SensorData.Timestamp, "Name", SensorData.Name,
+					FieldType.Identity, FieldQoS.AutomaticReadout));
+			}
+
+			if (!string.IsNullOrEmpty(SensorData.Id))
+			{
+				Result.Add(new StringField(ThingReference.Empty, SensorData.Timestamp, "ID", SensorData.Id,
+					FieldType.Identity, FieldQoS.AutomaticReadout));
+			}
+
+			if (SensorData.TimeZone.HasValue)
+			{
+				Result.Add(new QuantityField(ThingReference.Empty, SensorData.Timestamp, "Time Zone",
+					SensorData.TimeZone.Value / 3600.0, 2, "h", FieldType.Identity, FieldQoS.AutomaticReadout));
+			}
+
+			if (SensorData.VisibilityMeters.HasValue)
+			{
+				Result.Add(new QuantityField(ThingReference.Empty, SensorData.Timestamp, "Visibility",
+					SensorData.VisibilityMeters.Value, 0, "m", FieldType.Momentary, FieldQoS.AutomaticReadout));
+			}
+
+			if (SensorData.LongitudeDegrees.HasValue)
+			{
+				Result.Add(new QuantityField(ThingReference.Empty, SensorData.Timestamp, "Longitude",
+					SensorData.LongitudeDegrees.Value, 2, "°", FieldType.Identity, FieldQoS.AutomaticReadout));
+			}
+
+			if (SensorData.LatitudeDegrees.HasValue)
+			{
+				Result.Add(new QuantityField(ThingReference.Empty, SensorData.Timestamp, "Latitude",
+					SensorData.LatitudeDegrees.Value, 2, "°", FieldType.Identity, FieldQoS.AutomaticReadout));
+			}
+
+			if (SensorData.TemperatureCelcius.HasValue)
+			{
+				Result.Add(new QuantityField(ThingReference.Empty, SensorData.Timestamp, "Temperature",
+					SensorData.TemperatureCelcius.Value, 2, "°C", FieldType.Momentary, FieldQoS.AutomaticReadout));
+			}
+
+			if (SensorData.FeelsLikeCelcius.HasValue)
+			{
+				Result.Add(new QuantityField(ThingReference.Empty, SensorData.Timestamp, "Feels Like",
+					SensorData.FeelsLikeCelcius.Value, 2, "°C", FieldType.Computed, FieldQoS.AutomaticReadout));
+			}
+
+			if (SensorData.TemperatureMinCelcius.HasValue)
+			{
+				Result.Add(new QuantityField(ThingReference.Empty, SensorData.Timestamp, "Temperature, Min",
+					SensorData.TemperatureMinCelcius.Value, 2, "°C", FieldType.Peak, FieldQoS.AutomaticReadout));
+			}
+
+			if (SensorData.TemperatureMaxCelcius.HasValue)
+			{
+				Result.Add(new QuantityField(ThingReference.Empty, SensorData.Timestamp, "Temperature, Max",
+					SensorData.TemperatureMaxCelcius.Value, 2, "°C", FieldType.Peak, FieldQoS.AutomaticReadout));
+			}
+
+			if (SensorData.PressureHPa.HasValue)
+			{
+				Result.Add(new QuantityField(ThingReference.Empty, SensorData.Timestamp, "Pressure",
+					SensorData.PressureHPa.Value, 0, "hPa", FieldType.Momentary, FieldQoS.AutomaticReadout));
+			}
+
+			if (SensorData.HumidityPercent.HasValue)
+			{
+				Result.Add(new QuantityField(ThingReference.Empty, SensorData.Timestamp, "Humidity",
+					SensorData.HumidityPercent.Value, 0, "%", FieldType.Momentary, FieldQoS.AutomaticReadout));
+			}
+
+			if (SensorData.WindSpeedMPerS.HasValue)
+			{
+				Result.Add(new QuantityField(ThingReference.Empty, SensorData.Timestamp, "Wind, Speed",
+					SensorData.WindSpeedMPerS.Value, 1, "m/s", FieldType.Momentary, FieldQoS.AutomaticReadout));
+			}
+
+			if (SensorData.WindDirectionDegrees.HasValue)
+			{
+				Result.Add(new QuantityField(ThingReference.Empty, SensorData.Timestamp, "Wind, Direction",
+					SensorData.WindDirectionDegrees.Value, 0, "°", FieldType.Momentary, FieldQoS.AutomaticReadout));
+			}
+
+			if (SensorData.CloudinessPercent.HasValue)
+			{
+				Result.Add(new QuantityField(ThingReference.Empty, SensorData.Timestamp, "Cloudiness",
+					SensorData.CloudinessPercent.Value, 0, "%", FieldType.Momentary, FieldQoS.AutomaticReadout));
+			}
+
+			if (SensorData.WeatherId.HasValue)
+			{
+				Result.Add(new Int32Field(ThingReference.Empty, SensorData.Timestamp, "Weather, ID",
+					SensorData.WeatherId.Value, FieldType.Momentary, FieldQoS.AutomaticReadout));
+			}
+
+			if (!string.IsNullOrEmpty(SensorData.Country))
+			{
+				Result.Add(new StringField(ThingReference.Empty, SensorData.Timestamp, "Country", SensorData.Country,
+					FieldType.Identity, FieldQoS.AutomaticReadout));
+			}
+
+			if (SensorData.Sunrise.HasValue)
+			{
+				Result.Add(new DateTimeField(ThingReference.Empty, SensorData.Timestamp, "Sunrise",
+					SensorData.Sunrise.Value, FieldType.Momentary, FieldQoS.AutomaticReadout));
+			}
+
+			if (SensorData.Sunset.HasValue)
+			{
+				Result.Add(new DateTimeField(ThingReference.Empty, SensorData.Timestamp, "Sunset",
+					SensorData.Sunset.Value, FieldType.Momentary, FieldQoS.AutomaticReadout));
+			}
+
+			if (!string.IsNullOrEmpty(SensorData.Weather))
+			{
+				Result.Add(new StringField(ThingReference.Empty, SensorData.Timestamp, "Weather", SensorData.Weather,
+					FieldType.Momentary, FieldQoS.AutomaticReadout));
+			}
+
+			if (!string.IsNullOrEmpty(SensorData.Description))
+			{
+				Result.Add(new StringField(ThingReference.Empty, SensorData.Timestamp, "Weather, Description", 
+					SensorData. Description, FieldType.Momentary, FieldQoS.AutomaticReadout));
+			}
+
+			if (!string.IsNullOrEmpty(SensorData.IconUrl))
+			{
+				Result.Add(new StringField(ThingReference.Empty, SensorData.Timestamp, "Weather, Icon",
+					SensorData.IconUrl, FieldType.Momentary, FieldQoS.AutomaticReadout));
+			}
+
+			SensorData Fields = new SensorData(Result);
+
+			await PublishString(Mqtt, BaseTopic, Fields.PayloadXml);
 		}
 
 		/// <summary>
