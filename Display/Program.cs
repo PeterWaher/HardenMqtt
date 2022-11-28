@@ -103,16 +103,17 @@ namespace Display
 
 				// Checking pairing information
 
-				string PairedTo = await RuntimeSettings.GetAsync("ed25519.pair", string.Empty);
+				string PairedToKey = await RuntimeSettings.GetAsync("Pair.Ed25519.Public", string.Empty);
+				string PairedToId = await RuntimeSettings.GetAsync("Pair.ID", string.Empty);
 				byte[] PairedToBin;
 
-				if (string.IsNullOrEmpty(PairedTo))
+				if (string.IsNullOrEmpty(PairedToKey))
 					PairedToBin = null;
 				else
 				{
 					try
 					{
-						PairedToBin = Convert.FromBase64String(PairedTo);
+						PairedToBin = Convert.FromBase64String(PairedToKey);
 					}
 					catch
 					{
@@ -123,7 +124,7 @@ namespace Display
 				if (PairedToBin is null)
 					Log.Informational("Not paired to any device.", DeviceID);
 				else
-					Log.Informational("Paired to: " + PairedTo, DeviceID);
+					Log.Informational("Paired to: " + PairedToKey + " (" + PairedToId + ")", DeviceID);
 
 				// Configuring and connecting to MQTT Server
 
@@ -234,7 +235,7 @@ namespace Display
 
 					// Receiving public key of device ready to be paired.
 
-					Mqtt.OnContentReceived += (sender, e) =>
+					Task CheckPairing(object sender, MqttContent e)
 					{
 						if (e.Topic.StartsWith("HardenMqtt/Secured/Pairing/Sensor/"))
 						{
@@ -277,6 +278,8 @@ namespace Display
 						return Task.CompletedTask;
 					};
 
+					Mqtt.OnContentReceived += CheckPairing;
+
 					// Subscribe to pairing messages
 
 					await Mqtt.SUBSCRIBE("HardenMqtt/Secured/Pairing/Sensor/+");
@@ -285,29 +288,31 @@ namespace Display
 
 					while (PairedToBin is null)
 					{
-						PairedTo = UserInput("Public Key of remote device", PairedTo ?? string.Empty);
+						PairedToKey = UserInput("Public Key of remote device", PairedToKey ?? string.Empty);
 
 						try
 						{
-							if (int.TryParse(PairedTo, out int Nr))
+							if (int.TryParse(PairedToKey, out int Nr))
 							{
 								lock (NrToKey)
 								{
 									if (NrToKey.TryGetValue(Nr, out string SelectedKey) &&
 										KeyToDeviceId.TryGetValue(SelectedKey, out string SelectedId))
 									{
-										PairedTo = SelectedKey;
-
-										Log.Informational("Pairing to " + SelectedId, DeviceID);
+										PairedToKey = SelectedKey;
+										PairedToId = SelectedId;
 									}
 								}
 							}
 
-							byte[] Bin = Convert.FromBase64String(PairedTo);
+							byte[] Bin = Convert.FromBase64String(PairedToKey);
 							Edwards25519 Temp = new Edwards25519(Bin);
 
 							PairedToBin = Bin;
-							await RuntimeSettings.SetAsync("ed25519.pair", PairedTo);
+							await RuntimeSettings.SetAsync("Pair.Ed25519.Public", PairedToKey);
+							await RuntimeSettings.SetAsync("Pair.Id", PairedToId);
+
+							Log.Informational("Pairing to " + PairedToKey + " (" + PairedToId + ")", DeviceID);
 						}
 						catch (Exception)
 						{
@@ -317,23 +322,47 @@ namespace Display
 
 					// Unsubscribe from pairing messages
 
+					Mqtt.OnContentReceived -= CheckPairing;
 					await Mqtt.UNSUBSCRIBE("HardenMqtt/Secured/Pairing/Sensor/+");
 				}
 
-				// Unstructured reception (unsecured)
+				Mqtt.OnContentReceived += (sender, e) =>
+				{
+					if (e.Topic.StartsWith("HardenMqtt/Unsecured/Unstructured/") && e.Topic[34..] == PairedToId)
+					{
+						// Unstructured reception (unsecured)
 
+					}
+					else if (e.Topic.StartsWith("HardenMqtt/Unsecured/Structured/") && e.Topic[32..] == PairedToId)
+					{
+						// Structured reception (unsecured)
 
-				// Structured reception (unsecured)
+					}
+					else if (e.Topic.StartsWith("HardenMqtt/Unsecured/Interoperable/") && e.Topic[35..] == PairedToId)
+					{
+						// Interoperable reception (unsecured)
 
+					}
+					else if (e.Topic.StartsWith("HardenMqtt/Unsecured/Public/") && e.Topic[28..] == PairedToKey)
+					{
+						// Interoperable, signed, public reception (secured)
 
-				// Interoperable reception (unsecured)
+					}
+					else if (e.Topic.StartsWith("HardenMqtt/Unsecured/Confidential/") && e.Topic[34..] == PairedToKey)
+					{
+						// Interoperable, signed, confidential reception (secured)
 
+					}
 
-				// Interoperable, signed, public reception (secured)
+					return Task.CompletedTask;
+				};
 
-
-				// Interoperable, signed, confidential reception (secured)
-
+				await Mqtt.SUBSCRIBE(
+					"HardenMqtt/Unsecured/Unstructured/" + PairedToId,
+					"HardenMqtt/Unsecured/Structured/" + PairedToId,
+					"HardenMqtt/Unsecured/Interoperable/" + PairedToId,
+					"HardenMqtt/Unsecured/Public/" + PairedToKey,
+					"HardenMqtt/Unsecured/Confidential/" + PairedToKey);
 
 				// Normal operation
 
