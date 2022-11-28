@@ -256,7 +256,7 @@ namespace Sensor
 						Api = new OpenWeatherMapApi(ApiKey, ApiLocation, ApiCountry);
 
 						WeatherInformation SensorData = await Api.GetData();
-						await ReportSensorData(SensorData, Mqtt, DeviceID, Cipher, PairedToBin);
+						await ReportSensorData(SensorData, Mqtt, DeviceID, "Sensor", Cipher, PairedToBin);
 
 						ApiConnected = true;
 						Log.Informational("Sensor connected to API.", DeviceID);
@@ -277,7 +277,7 @@ namespace Sensor
 						Log.Informational("Reading weather information.", DeviceID);
 
 						WeatherInformation SensorData = await Api.GetData();
-						await ReportSensorData(SensorData, Mqtt, DeviceID, Cipher, PairedToBin);
+						await ReportSensorData(SensorData, Mqtt, DeviceID, "Sensor", Cipher, PairedToBin);
 
 						Log.Informational("Weather data read. Publishing to MQTT.", DeviceID);
 					}
@@ -299,22 +299,81 @@ namespace Sensor
 
 				// Configure pairing
 
-				while (PairedToBin is null)
+				if (PairedToBin is null)
 				{
-					PairedTo = UserInput("Public Key of remote device", PairedTo ?? string.Empty);
+					Dictionary<int, string> NrToKey = new Dictionary<int, string>();
+					Dictionary<string, int> KeyToNr = new Dictionary<string, int>();
 
-					try
-					{
-						byte[] Bin = Convert.FromBase64String(PairedTo);
-						Edwards25519 Temp = new Edwards25519(Bin);
+					// Receiving public key of device ready to be paired.
 
-						PairedToBin = Bin;
-						await RuntimeSettings.SetAsync("ed25519.pair", PairedTo);
-					}
-					catch (Exception)
+					Mqtt.OnContentReceived += (sender, e) =>
 					{
-						Log.Error("Invalid public key provided during pairing.", DeviceID);
+						if (e.Topic.StartsWith("HardenMqtt/Secured/Pairing/"))
+						{
+							lock (NrToKey)
+							{
+								string Key = e.Topic[27..];
+
+								if (Key.Length < 100 && e.Data.Length < 100 && !KeyToNr.ContainsKey(Key))
+								{
+									try
+									{
+										byte[] KeyBin = Convert.FromBase64String(Key);
+										Cipher.GetSharedKey(KeyBin, Hashes.ComputeSHA256Hash);
+									}
+									catch
+									{
+										return Task.CompletedTask;  // Invalid key
+									}
+
+									int KeyNr = NrToKey.Count + 1;
+									NrToKey[KeyNr] = Key;
+									KeyToNr[Key] = KeyNr;
+
+									Log.Notice("Device ready to be paired: " + KeyNr + ". " + Encoding.UTF8.GetString(e.Data) + ": " + Key, DeviceID);
+								}
+							}
+						}
+
+						return Task.CompletedTask;
+					};
+
+					// Subscribe to pairing messages
+
+					await Mqtt.SUBSCRIBE("HardenMqtt/Secured/Pairing/+");
+
+					// Pair device
+
+					while (PairedToBin is null)
+					{
+						PairedTo = UserInput("Public Key of remote device", PairedTo ?? string.Empty);
+
+						try
+						{
+							if (int.TryParse(PairedTo, out int Nr))
+							{
+								lock (NrToKey)
+								{
+									if (NrToKey.TryGetValue(Nr, out string s))
+										PairedTo = s;
+								}
+							}
+
+							byte[] Bin = Convert.FromBase64String(PairedTo);
+							Edwards25519 Temp = new Edwards25519(Bin);
+
+							PairedToBin = Bin;
+							await RuntimeSettings.SetAsync("ed25519.pair", PairedTo);
+						}
+						catch (Exception)
+						{
+							Log.Error("Invalid public key provided during pairing.", DeviceID);
+						}
 					}
+
+					// Unsubscribe from pairing messages
+
+					await Mqtt.UNSUBSCRIBE("HardenMqtt/Secured/Pairing/+");
 				}
 
 				// Normal operation
@@ -435,14 +494,18 @@ namespace Sensor
 		/// <param name="DeviceID">Device ID</param>
 		/// <param name="Cipher">Cipher to use for security purposes.</param>
 		/// <param name="PairedPublicKey">Public Key of paired recipient.</param>
-		private static async Task ReportSensorData(WeatherInformation SensorData, MqttClient Mqtt, string DeviceID,
+		private static async Task ReportSensorData(WeatherInformation SensorData, MqttClient Mqtt, string DeviceID, string DeviceType,
 			EllipticCurve Cipher, byte[] PairedPublicKey)
 		{
 			await ReportSensorDataUnsecuredUnstructured(SensorData, Mqtt, "HardenMqtt/Unsecured/Unstructured/" + DeviceID);
 			await ReportSensorDataUnsecuredStructured(SensorData, Mqtt, "HardenMqtt/Unsecured/Structured/" + DeviceID);
 			await ReportSensorDataUnsecuredInteroperable(SensorData, Mqtt, "HardenMqtt/Unsecured/Interoperable/" + DeviceID, DeviceID);
 			await ReportSensorDataSecuredPublic(SensorData, Mqtt, "HardenMqtt/Secured/Public/" + Convert.ToBase64String(Cipher.PublicKey), DeviceID, Cipher);
-			await ReportSensorDataSecuredConfidential(SensorData, Mqtt, "HardenMqtt/Secured/Confidential/" + Convert.ToBase64String(Cipher.PublicKey), DeviceID, Cipher, PairedPublicKey);
+
+			if (PairedPublicKey is null)
+				await PublishString(Mqtt, "HardenMqtt/Secured/Pairing/" + Convert.ToBase64String(Cipher.PublicKey), DeviceType, false);
+			else
+				await ReportSensorDataSecuredConfidential(SensorData, Mqtt, "HardenMqtt/Secured/Confidential/" + Convert.ToBase64String(Cipher.PublicKey), DeviceID, Cipher, PairedPublicKey);
 		}
 
 		/// <summary>
@@ -454,29 +517,29 @@ namespace Sensor
 		private static async Task ReportSensorDataUnsecuredUnstructured(WeatherInformation SensorData, MqttClient Mqtt,
 			string BaseTopic)
 		{
-			await PublishString(Mqtt, BaseTopic + "/Timestamp", SensorData.Timestamp.ToString());
-			await PublishString(Mqtt, BaseTopic + "/Name", SensorData.Name);
-			await PublishString(Mqtt, BaseTopic + "/Id", SensorData.Id);
-			await PublishString(Mqtt, BaseTopic + "/Country", SensorData.Country);
-			await PublishString(Mqtt, BaseTopic + "/Weather", SensorData.Weather);
-			await PublishString(Mqtt, BaseTopic + "/IconUrl", SensorData.IconUrl);
-			await PublishString(Mqtt, BaseTopic + "/Description", SensorData.Description);
-			await PublishString(Mqtt, BaseTopic + "/TimeZone", SensorData.TimeZone?.ToString() ?? string.Empty);
-			await PublishString(Mqtt, BaseTopic + "/VisibilityMeters", (SensorData.VisibilityMeters?.ToString() ?? string.Empty) + " m");
-			await PublishString(Mqtt, BaseTopic + "/Longitude", (SensorData.LongitudeDegrees?.ToString() ?? string.Empty) + "°");
-			await PublishString(Mqtt, BaseTopic + "/Latitude", (SensorData.LatitudeDegrees?.ToString() ?? string.Empty) + "°");
-			await PublishString(Mqtt, BaseTopic + "/Temperature", (SensorData.TemperatureCelcius?.ToString() ?? string.Empty) + "° C");
-			await PublishString(Mqtt, BaseTopic + "/TemperatureMin", (SensorData.TemperatureMinCelcius?.ToString() ?? string.Empty) + "° C");
-			await PublishString(Mqtt, BaseTopic + "/TemperatureMax", (SensorData.TemperatureMaxCelcius?.ToString() ?? string.Empty) + "° C");
-			await PublishString(Mqtt, BaseTopic + "/FeelsLike", (SensorData.FeelsLikeCelcius?.ToString() ?? string.Empty) + "° C");
-			await PublishString(Mqtt, BaseTopic + "/Pressure", (SensorData.PressureHPa?.ToString() ?? string.Empty) + " hPa");
-			await PublishString(Mqtt, BaseTopic + "/Humidity", (SensorData.HumidityPercent?.ToString() ?? string.Empty) + "%");
-			await PublishString(Mqtt, BaseTopic + "/WindSpeed", (SensorData.WindSpeedMPerS?.ToString() ?? string.Empty) + " m/s");
-			await PublishString(Mqtt, BaseTopic + "/WindDirection", (SensorData.WindDirectionDegrees?.ToString() ?? string.Empty) + "°");
-			await PublishString(Mqtt, BaseTopic + "/Cloudiness", (SensorData.CloudinessPercent?.ToString() ?? string.Empty) + "%");
-			await PublishString(Mqtt, BaseTopic + "/WeatherId", SensorData.WeatherId?.ToString() ?? string.Empty);
-			await PublishString(Mqtt, BaseTopic + "/Sunrise", SensorData.Sunrise.ToString());
-			await PublishString(Mqtt, BaseTopic + "/Sunset", SensorData.Sunset.ToString());
+			await PublishString(Mqtt, BaseTopic + "/Timestamp", SensorData.Timestamp.ToString(), true);
+			await PublishString(Mqtt, BaseTopic + "/Name", SensorData.Name, true);
+			await PublishString(Mqtt, BaseTopic + "/Id", SensorData.Id, true);
+			await PublishString(Mqtt, BaseTopic + "/Country", SensorData.Country, true);
+			await PublishString(Mqtt, BaseTopic + "/Weather", SensorData.Weather, true);
+			await PublishString(Mqtt, BaseTopic + "/IconUrl", SensorData.IconUrl, true);
+			await PublishString(Mqtt, BaseTopic + "/Description", SensorData.Description, true);
+			await PublishString(Mqtt, BaseTopic + "/TimeZone", SensorData.TimeZone?.ToString() ?? string.Empty, true);
+			await PublishString(Mqtt, BaseTopic + "/VisibilityMeters", (SensorData.VisibilityMeters?.ToString() ?? string.Empty, true) + " m", true);
+			await PublishString(Mqtt, BaseTopic + "/Longitude", (SensorData.LongitudeDegrees?.ToString() ?? string.Empty) + "°", true);
+			await PublishString(Mqtt, BaseTopic + "/Latitude", (SensorData.LatitudeDegrees?.ToString() ?? string.Empty) + "°", true);
+			await PublishString(Mqtt, BaseTopic + "/Temperature", (SensorData.TemperatureCelcius?.ToString() ?? string.Empty) + "° C", true);
+			await PublishString(Mqtt, BaseTopic + "/TemperatureMin", (SensorData.TemperatureMinCelcius?.ToString() ?? string.Empty) + "° C", true);
+			await PublishString(Mqtt, BaseTopic + "/TemperatureMax", (SensorData.TemperatureMaxCelcius?.ToString() ?? string.Empty) + "° C", true);
+			await PublishString(Mqtt, BaseTopic + "/FeelsLike", (SensorData.FeelsLikeCelcius?.ToString() ?? string.Empty) + "° C", true);
+			await PublishString(Mqtt, BaseTopic + "/Pressure", (SensorData.PressureHPa?.ToString() ?? string.Empty) + " hPa", true);
+			await PublishString(Mqtt, BaseTopic + "/Humidity", (SensorData.HumidityPercent?.ToString() ?? string.Empty) + "%", true);
+			await PublishString(Mqtt, BaseTopic + "/WindSpeed", (SensorData.WindSpeedMPerS?.ToString() ?? string.Empty) + " m/s", true);
+			await PublishString(Mqtt, BaseTopic + "/WindDirection", (SensorData.WindDirectionDegrees?.ToString() ?? string.Empty) + "°", true);
+			await PublishString(Mqtt, BaseTopic + "/Cloudiness", (SensorData.CloudinessPercent?.ToString() ?? string.Empty) + "%", true);
+			await PublishString(Mqtt, BaseTopic + "/WeatherId", SensorData.WeatherId?.ToString() ?? string.Empty, true);
+			await PublishString(Mqtt, BaseTopic + "/Sunrise", SensorData.Sunrise.ToString(), true);
+			await PublishString(Mqtt, BaseTopic + "/Sunset", SensorData.Sunset.ToString(), true);
 		}
 
 		/// <summary>
@@ -488,7 +551,7 @@ namespace Sensor
 		private static async Task ReportSensorDataUnsecuredStructured(WeatherInformation SensorData, MqttClient Mqtt, string Topic)
 		{
 			string Json = JSON.Encode(SensorData, false);
-			await PublishString(Mqtt, Topic, Json);
+			await PublishString(Mqtt, Topic, Json, true);
 		}
 
 		/// <summary>
@@ -501,7 +564,7 @@ namespace Sensor
 			string Topic, string DeviceID)
 		{
 			string Xml = GetInteroperableXml(SensorData, DeviceID, null);
-			await PublishString(Mqtt, Topic, Xml);
+			await PublishString(Mqtt, Topic, Xml, true);
 		}
 
 		/// <summary>
@@ -675,7 +738,7 @@ namespace Sensor
 
 			Xml = GetInteroperableXml(SensorData, DeviceID, Signature);
 
-			await PublishString(Mqtt, Topic, Xml);
+			await PublishString(Mqtt, Topic, Xml, true);
 		}
 
 		/// <summary>
@@ -688,39 +751,34 @@ namespace Sensor
 		private static async Task ReportSensorDataSecuredConfidential(WeatherInformation SensorData, MqttClient Mqtt,
 			string Topic, string DeviceID, EllipticCurve Cipher, byte[] RemotePublicKey)
 		{
-			if (RemotePublicKey is null)
-				await PublishString(Mqtt, Topic, "Waiting to be paired.");
-			else
-			{
-				string Xml = GetInteroperableXml(SensorData, DeviceID, null);
-				byte[] Bin = Encoding.UTF8.GetBytes(Xml);
-				byte[] Signature = Cipher.Sign(Bin);
+			string Xml = GetInteroperableXml(SensorData, DeviceID, null);
+			byte[] Bin = Encoding.UTF8.GetBytes(Xml);
+			byte[] Signature = Cipher.Sign(Bin);
 
-				Xml = GetInteroperableXml(SensorData, DeviceID, Signature);
-				Bin = Encoding.UTF8.GetBytes(Xml);
+			Xml = GetInteroperableXml(SensorData, DeviceID, Signature);
+			Bin = Encoding.UTF8.GetBytes(Xml);
 
-				byte[] Key = Cipher.GetSharedKey(RemotePublicKey, Hashes.ComputeSHA256Hash);
-				byte[] Nonce = new byte[16];
-				byte[] IV = new byte[16];
+			byte[] Key = Cipher.GetSharedKey(RemotePublicKey, Hashes.ComputeSHA256Hash);
+			byte[] Nonce = new byte[16];
+			byte[] IV = new byte[16];
 
-				rnd.GetBytes(Nonce);
-				rnd.GetBytes(IV);
+			rnd.GetBytes(Nonce);
+			rnd.GetBytes(IV);
 
-				using Aes Aes = Aes.Create();
-				Aes.BlockSize = 128;
-				Aes.KeySize = 256;
-				Aes.Mode = CipherMode.CBC;
-				Aes.Padding = PaddingMode.PKCS7;
+			using Aes Aes = Aes.Create();
+			Aes.BlockSize = 128;
+			Aes.KeySize = 256;
+			Aes.Mode = CipherMode.CBC;
+			Aes.Padding = PaddingMode.PKCS7;
 
-				using ICryptoTransform Encryptor = Aes.CreateEncryptor(Key, IV);
-				byte[] Encrypted = Encryptor.TransformFinalBlock(Bin, 0, Bin.Length);
-				byte[] ToSend = new byte[Encrypted.Length + 32];
-				Array.Copy(IV, 0, ToSend, 0, 16);       // These are not secret. Only used to create entropy, to assure not the same information and parameters are used in different messages.
-				Array.Copy(Nonce, 0, ToSend, 16, 16);   // These are not secret. Only used to create entropy, to assure not the same information and parameters are used in different messages.
-				Array.Copy(Encrypted, 0, ToSend, 32, Encrypted.Length);
+			using ICryptoTransform Encryptor = Aes.CreateEncryptor(Key, IV);
+			byte[] Encrypted = Encryptor.TransformFinalBlock(Bin, 0, Bin.Length);
+			byte[] ToSend = new byte[Encrypted.Length + 32];
+			Array.Copy(IV, 0, ToSend, 0, 16);       // These are not secret. Only used to create entropy, to assure not the same information and parameters are used in different messages.
+			Array.Copy(Nonce, 0, ToSend, 16, 16);   // These are not secret. Only used to create entropy, to assure not the same information and parameters are used in different messages.
+			Array.Copy(Encrypted, 0, ToSend, 32, Encrypted.Length);
 
-				await Mqtt.PUBLISH(Topic, MqttQualityOfService.AtMostOnce, true, ToSend);
-			}
+			await Mqtt.PUBLISH(Topic, MqttQualityOfService.AtMostOnce, true, ToSend);
 		}
 
 		private static readonly RandomNumberGenerator rnd = RandomNumberGenerator.Create();
@@ -731,10 +789,11 @@ namespace Sensor
 		/// <param name="Mqtt">Connected MQTT Client</param>
 		/// <param name="Topic">Topic to publish to</param>
 		/// <param name="Value">String value to encode and publish.</param>
-		private static async Task PublishString(MqttClient Mqtt, string Topic, string Value)
+		/// <param name="Retain">If value should be retained.</param>
+		private static async Task PublishString(MqttClient Mqtt, string Topic, string Value, bool Retain)
 		{
 			byte[] Binary = Encoding.UTF8.GetBytes(Value);
-			await Mqtt.PUBLISH(Topic, MqttQualityOfService.AtMostOnce, true, Binary);
+			await Mqtt.PUBLISH(Topic, MqttQualityOfService.AtMostOnce, Retain, Binary);
 		}
 
 		#endregion
