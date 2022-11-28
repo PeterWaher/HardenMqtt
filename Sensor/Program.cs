@@ -87,7 +87,7 @@ namespace Sensor
 				{
 					try
 					{
-						Secret = Convert.FromBase64String(p);
+						Secret = Base64Url.Decode(p);
 					}
 					catch (Exception)
 					{
@@ -101,13 +101,13 @@ namespace Sensor
 
 					Cipher = new Edwards25519();
 					Secret = Cipher.GenerateSecret();
-					p = Convert.ToBase64String(Secret);
+					p = Base64Url.Encode(Secret);
 					await RuntimeSettings.SetAsync("ed25519.p", p);
 				}
 
-				Cipher = new Edwards25519(Convert.FromBase64String(p));
+				Cipher = new Edwards25519(Base64Url.Decode(p));
 
-				Log.Informational("Public key: " + Convert.ToBase64String(Cipher.PublicKey), DeviceID);
+				Log.Informational("Public key: " + Base64Url.Encode(Cipher.PublicKey), DeviceID);
 
 				// Checking pairing information
 
@@ -121,7 +121,7 @@ namespace Sensor
 				{
 					try
 					{
-						PairedToBin = Convert.FromBase64String(PairedToKey);
+						PairedToBin = Base64Url.Decode(PairedToKey);
 					}
 					catch
 					{
@@ -326,7 +326,7 @@ namespace Sensor
 
 									try
 									{
-										byte[] KeyBin = Convert.FromBase64String(Key);
+										byte[] KeyBin = Base64Url.Decode(Key);
 										Cipher.GetSharedKey(KeyBin, Hashes.ComputeSHA256Hash);
 									}
 									catch
@@ -380,7 +380,7 @@ namespace Sensor
 								}
 							}
 
-							byte[] Bin = Convert.FromBase64String(PairedToKey);
+							byte[] Bin = Base64Url.Decode(PairedToKey);
 							Edwards25519 Temp = new Edwards25519(Bin);
 
 							PairedToBin = Bin;
@@ -524,12 +524,12 @@ namespace Sensor
 			await ReportSensorDataUnsecuredUnstructured(SensorData, Mqtt, "HardenMqtt/Unsecured/Unstructured/" + DeviceID);
 			await ReportSensorDataUnsecuredStructured(SensorData, Mqtt, "HardenMqtt/Unsecured/Structured/" + DeviceID);
 			await ReportSensorDataUnsecuredInteroperable(SensorData, Mqtt, "HardenMqtt/Unsecured/Interoperable/" + DeviceID, DeviceID);
-			await ReportSensorDataSecuredPublic(SensorData, Mqtt, "HardenMqtt/Secured/Public/" + Convert.ToBase64String(Cipher.PublicKey), DeviceID, Cipher);
+			await ReportSensorDataSecuredPublic(SensorData, Mqtt, "HardenMqtt/Secured/Public/" + Base64Url.Encode(Cipher.PublicKey), DeviceID, Cipher);
 
 			if (PairedPublicKey is null)
-				await PublishString(Mqtt, "HardenMqtt/Secured/Pairing/" + DeviceType + "/" + Convert.ToBase64String(Cipher.PublicKey), DeviceID, false);
+				await PublishString(Mqtt, "HardenMqtt/Secured/Pairing/" + DeviceType + "/" + Base64Url.Encode(Cipher.PublicKey), DeviceID, false);
 			else
-				await ReportSensorDataSecuredConfidential(SensorData, Mqtt, "HardenMqtt/Secured/Confidential/" + Convert.ToBase64String(Cipher.PublicKey), DeviceID, Cipher, PairedPublicKey);
+				await ReportSensorDataSecuredConfidential(SensorData, Mqtt, "HardenMqtt/Secured/Confidential/" + Base64Url.Encode(Cipher.PublicKey), DeviceID, Cipher, PairedPublicKey);
 		}
 
 		/// <summary>
@@ -738,7 +738,7 @@ namespace Sensor
 			if (!(Signature is null))
 			{
 				Result.Add(new StringField(Ref, DateTime.Now, "Signature",
-					Convert.ToBase64String(Signature), FieldType.Computed, FieldQoS.AutomaticReadout));
+					Base64Url.Encode(Signature), FieldType.Computed, FieldQoS.AutomaticReadout));
 			}
 
 			SensorData Fields = new SensorData(Result);

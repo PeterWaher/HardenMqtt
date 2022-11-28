@@ -13,6 +13,7 @@ using Waher.Runtime.Settings;
 using Waher.Security.EllipticCurves;
 using System.Collections.Generic;
 using Waher.Security;
+using Waher.Content;
 
 namespace Display
 {
@@ -79,7 +80,7 @@ namespace Display
 				{
 					try
 					{
-						Secret = Convert.FromBase64String(p);
+						Secret = Base64Url.Decode(p);	// Note: Use BAS64URL encoding instead of BASE64, to avoid path characters in topics.
 					}
 					catch (Exception)
 					{
@@ -93,13 +94,13 @@ namespace Display
 
 					Cipher = new Edwards25519();
 					Secret = Cipher.GenerateSecret();
-					p = Convert.ToBase64String(Secret);
+					p = Base64Url.Encode(Secret);
 					await RuntimeSettings.SetAsync("ed25519.p", p);
 				}
 
-				Cipher = new Edwards25519(Convert.FromBase64String(p));
+				Cipher = new Edwards25519(Base64Url.Decode(p));
 
-				Log.Informational("Public key: " + Convert.ToBase64String(Cipher.PublicKey), DeviceID);
+				Log.Informational("Public key: " + Base64Url.Encode(Cipher.PublicKey), DeviceID);
 
 				// Checking pairing information
 
@@ -113,7 +114,7 @@ namespace Display
 				{
 					try
 					{
-						PairedToBin = Convert.FromBase64String(PairedToKey);
+						PairedToBin = Base64Url.Decode(PairedToKey);
 					}
 					catch
 					{
@@ -249,7 +250,7 @@ namespace Display
 
 									try
 									{
-										byte[] KeyBin = Convert.FromBase64String(Key);
+										byte[] KeyBin = Base64Url.Decode(Key);
 										Cipher.GetSharedKey(KeyBin, Hashes.ComputeSHA256Hash);
 									}
 									catch
@@ -305,7 +306,7 @@ namespace Display
 								}
 							}
 
-							byte[] Bin = Convert.FromBase64String(PairedToKey);
+							byte[] Bin = Base64Url.Decode(PairedToKey);
 							Edwards25519 Temp = new Edwards25519(Bin);
 
 							PairedToBin = Bin;
@@ -328,30 +329,35 @@ namespace Display
 
 				Mqtt.OnContentReceived += (sender, e) =>
 				{
-					if (e.Topic.StartsWith("HardenMqtt/Unsecured/Unstructured/") && e.Topic[34..] == PairedToId)
-					{
-						// Unstructured reception (unsecured)
+					string[] Parts = e.Topic.Split('/');
 
-					}
-					else if (e.Topic.StartsWith("HardenMqtt/Unsecured/Structured/") && e.Topic[32..] == PairedToId)
+					if (Parts.Length >= 4 && Parts[0] == "HardenMqtt")
 					{
-						// Structured reception (unsecured)
-
-					}
-					else if (e.Topic.StartsWith("HardenMqtt/Unsecured/Interoperable/") && e.Topic[35..] == PairedToId)
-					{
-						// Interoperable reception (unsecured)
-
-					}
-					else if (e.Topic.StartsWith("HardenMqtt/Unsecured/Public/") && e.Topic[28..] == PairedToKey)
-					{
-						// Interoperable, signed, public reception (secured)
-
-					}
-					else if (e.Topic.StartsWith("HardenMqtt/Unsecured/Confidential/") && e.Topic[34..] == PairedToKey)
-					{
-						// Interoperable, signed, confidential reception (secured)
-
+						if (Parts[1] == "Unsecured")
+						{
+							if (Parts[2] == PairedToId)
+							{
+								switch (Parts[2])
+								{
+									case "Unstructured":        // Unstructured reception (unsecured)
+									case "Structured":          // Structured reception (unsecured)
+									case "Interoperable":       // Interoperable reception (unsecured)
+										break;
+								}
+							}
+						}
+						else if (Parts[1] == "Secured")
+						{
+							if (Parts[2] == PairedToKey)
+							{
+								switch (Parts[2])
+								{
+									case "Public":              // Interoperable, signed, public reception (secured)
+									case "Confidential":        // Interoperable, signed, confidential reception (secured)
+										break;
+								}
+							}
+						}
 					}
 
 					return Task.CompletedTask;
@@ -361,8 +367,8 @@ namespace Display
 					"HardenMqtt/Unsecured/Unstructured/" + PairedToId,
 					"HardenMqtt/Unsecured/Structured/" + PairedToId,
 					"HardenMqtt/Unsecured/Interoperable/" + PairedToId,
-					"HardenMqtt/Unsecured/Public/" + PairedToKey,
-					"HardenMqtt/Unsecured/Confidential/" + PairedToKey);
+					"HardenMqtt/Secured/Public/" + PairedToKey,
+					"HardenMqtt/Secured/Confidential/" + PairedToKey);
 
 				// Normal operation
 
