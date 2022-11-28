@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -14,6 +15,7 @@ using Waher.Persistence.Files;
 using Waher.Runtime.Inventory;
 using Waher.Runtime.Inventory.Loader;
 using Waher.Runtime.Settings;
+using Waher.Security;
 using Waher.Security.EllipticCurves;
 using Waher.Things;
 using Waher.Things.SensorData;
@@ -106,6 +108,30 @@ namespace Sensor
 				Cipher = new Edwards25519(Convert.FromBase64String(p));
 
 				Log.Informational("Public key: " + Convert.ToBase64String(Cipher.PublicKey), DeviceID);
+
+				// Checking pairing information
+
+				string PairedTo = await RuntimeSettings.GetAsync("ed25519.pair", string.Empty);
+				byte[] PairedToBin;
+
+				if (string.IsNullOrEmpty(PairedTo))
+					PairedToBin = null;
+				else
+				{
+					try
+					{
+						PairedToBin = Convert.FromBase64String(PairedTo);
+					}
+					catch
+					{
+						PairedToBin = null;
+					}
+				}
+
+				if (PairedToBin is null)
+					Log.Informational("Not paired to any device.", DeviceID);
+				else
+					Log.Informational("Paired to: " + PairedTo, DeviceID);
 
 				// Configuring and connecting to MQTT Server
 
@@ -230,7 +256,7 @@ namespace Sensor
 						Api = new OpenWeatherMapApi(ApiKey, ApiLocation, ApiCountry);
 
 						WeatherInformation SensorData = await Api.GetData();
-						await ReportSensorData(SensorData, Mqtt, DeviceID, Cipher);
+						await ReportSensorData(SensorData, Mqtt, DeviceID, Cipher, PairedToBin);
 
 						ApiConnected = true;
 						Log.Informational("Sensor connected to API.", DeviceID);
@@ -251,7 +277,7 @@ namespace Sensor
 						Log.Informational("Reading weather information.", DeviceID);
 
 						WeatherInformation SensorData = await Api.GetData();
-						await ReportSensorData(SensorData, Mqtt, DeviceID, Cipher);
+						await ReportSensorData(SensorData, Mqtt, DeviceID, Cipher, PairedToBin);
 
 						Log.Informational("Weather data read. Publishing to MQTT.", DeviceID);
 					}
@@ -270,6 +296,26 @@ namespace Sensor
 					e.Cancel = true;
 					Continue = false;
 				};
+
+				// Configure pairing
+
+				while (PairedToBin is null)
+				{
+					PairedTo = UserInput("Public Key of remote device", PairedTo ?? string.Empty);
+
+					try
+					{
+						byte[] Bin = Convert.FromBase64String(PairedTo);
+						Edwards25519 Temp = new Edwards25519(Bin);
+
+						PairedToBin = Bin;
+						await RuntimeSettings.SetAsync("ed25519.pair", PairedTo);
+					}
+					catch (Exception)
+					{
+						Log.Error("Invalid public key provided during pairing.", DeviceID);
+					}
+				}
 
 				// Normal operation
 
@@ -388,13 +434,15 @@ namespace Sensor
 		/// <param name="Mqtt">Connected MQTT Client</param>
 		/// <param name="DeviceID">Device ID</param>
 		/// <param name="Cipher">Cipher to use for security purposes.</param>
-		private static async Task ReportSensorData(WeatherInformation SensorData, MqttClient Mqtt, string DeviceID, 
-			EllipticCurve Cipher)
+		/// <param name="PairedPublicKey">Public Key of paired recipient.</param>
+		private static async Task ReportSensorData(WeatherInformation SensorData, MqttClient Mqtt, string DeviceID,
+			EllipticCurve Cipher, byte[] PairedPublicKey)
 		{
 			await ReportSensorDataUnsecuredUnstructured(SensorData, Mqtt, "HardenMqtt/Unsecured/Unstructured/" + DeviceID);
 			await ReportSensorDataUnsecuredStructured(SensorData, Mqtt, "HardenMqtt/Unsecured/Structured/" + DeviceID);
 			await ReportSensorDataUnsecuredInteroperable(SensorData, Mqtt, "HardenMqtt/Unsecured/Interoperable/" + DeviceID, DeviceID);
 			await ReportSensorDataSecuredPublic(SensorData, Mqtt, "HardenMqtt/Secured/Public/" + Convert.ToBase64String(Cipher.PublicKey), DeviceID, Cipher);
+			await ReportSensorDataSecuredConfidential(SensorData, Mqtt, "HardenMqtt/Secured/Confidential/" + Convert.ToBase64String(Cipher.PublicKey), DeviceID, Cipher, PairedPublicKey);
 		}
 
 		/// <summary>
@@ -445,7 +493,7 @@ namespace Sensor
 		}
 
 		/// <summary>
-		/// Publishes sensor data to MQTT in an unsecure, but structured manner.
+		/// Publishes sensor data to MQTT in an unsecure, but interoperable manner.
 		/// </summary>
 		/// <param name="SensorData">Collected Sensor Data</param>
 		/// <param name="Mqtt">Connected MQTT Client</param>
@@ -613,7 +661,7 @@ namespace Sensor
 		}
 
 		/// <summary>
-		/// Publishes sensor data to MQTT in an unsecure, but structured manner.
+		/// Publishes sensor data to MQTT in a secure, but public.
 		/// </summary>
 		/// <param name="SensorData">Collected Sensor Data</param>
 		/// <param name="Mqtt">Connected MQTT Client</param>
@@ -623,12 +671,60 @@ namespace Sensor
 			string BaseTopic, string DeviceID, EllipticCurve Cipher)
 		{
 			string Xml = GetInteroperableXml(SensorData, DeviceID, null);
-			byte[] Signature = Cipher.Sign(Encoding.UTF8.GetBytes(Xml));
-			
+			byte[] Bin = Encoding.UTF8.GetBytes(Xml);
+			byte[] Signature = Cipher.Sign(Bin);
+
 			Xml = GetInteroperableXml(SensorData, DeviceID, Signature);
 
 			await PublishString(Mqtt, BaseTopic, Xml);
 		}
+
+		/// <summary>
+		/// Publishes sensor data to MQTT in an unsecure, but structured manner.
+		/// </summary>
+		/// <param name="SensorData">Collected Sensor Data</param>
+		/// <param name="Mqtt">Connected MQTT Client</param>
+		/// <param name="BaseTopic">Base Topic</param>
+		/// <param name="Cipher">Cipher to use to generate signature.</param>
+		private static async Task ReportSensorDataSecuredConfidential(WeatherInformation SensorData, MqttClient Mqtt,
+			string BaseTopic, string DeviceID, EllipticCurve Cipher, byte[] RemotePublicKey)
+		{
+			if (RemotePublicKey is null)
+				await PublishString(Mqtt, BaseTopic, "Waiting to be paired.");
+			else
+			{
+				string Xml = GetInteroperableXml(SensorData, DeviceID, null);
+				byte[] Bin = Encoding.UTF8.GetBytes(Xml);
+				byte[] Signature = Cipher.Sign(Bin);
+
+				Xml = GetInteroperableXml(SensorData, DeviceID, Signature);
+				Bin = Encoding.UTF8.GetBytes(Xml);
+
+				byte[] Key = Cipher.GetSharedKey(RemotePublicKey, Hashes.ComputeSHA256Hash);
+				byte[] Nonce = new byte[16];
+				byte[] IV = new byte[16];
+
+				rnd.GetBytes(Nonce);
+				rnd.GetBytes(IV);
+
+				using Aes Aes = Aes.Create();
+				Aes.BlockSize = 128;
+				Aes.KeySize = 256;
+				Aes.Mode = CipherMode.CBC;
+				Aes.Padding = PaddingMode.PKCS7;
+
+				using ICryptoTransform Encryptor = Aes.CreateEncryptor(Key, IV);
+				byte[] Encrypted = Encryptor.TransformFinalBlock(Bin, 0, Bin.Length);
+				byte[] ToSend = new byte[Encrypted.Length + 32];
+				Array.Copy(IV, 0, ToSend, 0, 16);       // These are not secret. Only used to create entropy, to assure not the same information and parameters are used in different messages.
+				Array.Copy(Nonce, 0, ToSend, 16, 16);   // These are not secret. Only used to create entropy, to assure not the same information and parameters are used in different messages.
+				Array.Copy(Encrypted, 0, ToSend, 32, Encrypted.Length);
+
+				await Mqtt.PUBLISH(BaseTopic, MqttQualityOfService.AtMostOnce, true, ToSend);
+			}
+		}
+
+		private static readonly RandomNumberGenerator rnd = RandomNumberGenerator.Create();
 
 		/// <summary>
 		/// Encodes a string (using UTF-8) and publishes the binary encoding to a topic on MQTT, using at most once QoS.
