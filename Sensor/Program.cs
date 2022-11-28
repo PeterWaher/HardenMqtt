@@ -484,12 +484,11 @@ namespace Sensor
 		/// </summary>
 		/// <param name="SensorData">Collected Sensor Data</param>
 		/// <param name="Mqtt">Connected MQTT Client</param>
-		/// <param name="BaseTopic">Base Topic</param>
-		private static async Task ReportSensorDataUnsecuredStructured(WeatherInformation SensorData, MqttClient Mqtt,
-			string BaseTopic)
+		/// <param name="Topic">Topic</param>
+		private static async Task ReportSensorDataUnsecuredStructured(WeatherInformation SensorData, MqttClient Mqtt, string Topic)
 		{
 			string Json = JSON.Encode(SensorData, false);
-			await PublishString(Mqtt, BaseTopic, Json);
+			await PublishString(Mqtt, Topic, Json);
 		}
 
 		/// <summary>
@@ -497,12 +496,12 @@ namespace Sensor
 		/// </summary>
 		/// <param name="SensorData">Collected Sensor Data</param>
 		/// <param name="Mqtt">Connected MQTT Client</param>
-		/// <param name="BaseTopic">Base Topic</param>
+		/// <param name="Topic">Topic</param>
 		private static async Task ReportSensorDataUnsecuredInteroperable(WeatherInformation SensorData, MqttClient Mqtt,
-			string BaseTopic, string DeviceID)
+			string Topic, string DeviceID)
 		{
 			string Xml = GetInteroperableXml(SensorData, DeviceID, null);
-			await PublishString(Mqtt, BaseTopic, Xml);
+			await PublishString(Mqtt, Topic, Xml);
 		}
 
 		/// <summary>
@@ -665,10 +664,10 @@ namespace Sensor
 		/// </summary>
 		/// <param name="SensorData">Collected Sensor Data</param>
 		/// <param name="Mqtt">Connected MQTT Client</param>
-		/// <param name="BaseTopic">Base Topic</param>
+		/// <param name="Topic">Topic</param>
 		/// <param name="Cipher">Cipher to use to generate signature.</param>
 		private static async Task ReportSensorDataSecuredPublic(WeatherInformation SensorData, MqttClient Mqtt,
-			string BaseTopic, string DeviceID, EllipticCurve Cipher)
+			string Topic, string DeviceID, EllipticCurve Cipher)
 		{
 			string Xml = GetInteroperableXml(SensorData, DeviceID, null);
 			byte[] Bin = Encoding.UTF8.GetBytes(Xml);
@@ -676,7 +675,7 @@ namespace Sensor
 
 			Xml = GetInteroperableXml(SensorData, DeviceID, Signature);
 
-			await PublishString(Mqtt, BaseTopic, Xml);
+			await PublishString(Mqtt, Topic, Xml);
 		}
 
 		/// <summary>
@@ -684,13 +683,13 @@ namespace Sensor
 		/// </summary>
 		/// <param name="SensorData">Collected Sensor Data</param>
 		/// <param name="Mqtt">Connected MQTT Client</param>
-		/// <param name="BaseTopic">Base Topic</param>
+		/// <param name="Topic">Topic</param>
 		/// <param name="Cipher">Cipher to use to generate signature.</param>
 		private static async Task ReportSensorDataSecuredConfidential(WeatherInformation SensorData, MqttClient Mqtt,
-			string BaseTopic, string DeviceID, EllipticCurve Cipher, byte[] RemotePublicKey)
+			string Topic, string DeviceID, EllipticCurve Cipher, byte[] RemotePublicKey)
 		{
 			if (RemotePublicKey is null)
-				await PublishString(Mqtt, BaseTopic, "Waiting to be paired.");
+				await PublishString(Mqtt, Topic, "Waiting to be paired.");
 			else
 			{
 				string Xml = GetInteroperableXml(SensorData, DeviceID, null);
@@ -720,7 +719,7 @@ namespace Sensor
 				Array.Copy(Nonce, 0, ToSend, 16, 16);   // These are not secret. Only used to create entropy, to assure not the same information and parameters are used in different messages.
 				Array.Copy(Encrypted, 0, ToSend, 32, Encrypted.Length);
 
-				await Mqtt.PUBLISH(BaseTopic, MqttQualityOfService.AtMostOnce, true, ToSend);
+				await Mqtt.PUBLISH(Topic, MqttQualityOfService.AtMostOnce, true, ToSend);
 			}
 		}
 
