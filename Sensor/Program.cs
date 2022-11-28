@@ -302,20 +302,22 @@ namespace Sensor
 				if (PairedToBin is null)
 				{
 					Dictionary<int, string> NrToKey = new Dictionary<int, string>();
-					Dictionary<string, int> KeyToNr = new Dictionary<string, int>();
+					Dictionary<string, string> KeyToDeviceId = new Dictionary<string, string>();
 
 					// Receiving public key of device ready to be paired.
 
 					Mqtt.OnContentReceived += (sender, e) =>
 					{
-						if (e.Topic.StartsWith("HardenMqtt/Secured/Pairing/"))
+						if (e.Topic.StartsWith("HardenMqtt/Secured/Pairing/Display/"))
 						{
 							lock (NrToKey)
 							{
-								string Key = e.Topic[27..];
+								string Key = e.Topic[35..];
 
-								if (Key.Length < 100 && e.Data.Length < 100 && !KeyToNr.ContainsKey(Key))
+								if (Key.Length < 100 && e.Data.Length < 100 && !KeyToDeviceId.ContainsKey(Key))
 								{
+									string RemoteDeviceId = Encoding.UTF8.GetString(e.Data);
+
 									try
 									{
 										byte[] KeyBin = Convert.FromBase64String(Key);
@@ -328,9 +330,18 @@ namespace Sensor
 
 									int KeyNr = NrToKey.Count + 1;
 									NrToKey[KeyNr] = Key;
-									KeyToNr[Key] = KeyNr;
+									KeyToDeviceId[Key] = RemoteDeviceId;
 
-									Log.Notice("Device ready to be paired: " + KeyNr + ". " + Encoding.UTF8.GetString(e.Data) + ": " + Key, DeviceID);
+									StringBuilder sb = new StringBuilder();
+
+									sb.Append("Device ready to be paired: ");
+									sb.Append(KeyNr);
+									sb.Append(". Display, ");
+									sb.Append(RemoteDeviceId);
+									sb.Append(": ");
+									sb.Append(Key);
+
+									Log.Notice(sb.ToString(), DeviceID);
 								}
 							}
 						}
@@ -340,7 +351,7 @@ namespace Sensor
 
 					// Subscribe to pairing messages
 
-					await Mqtt.SUBSCRIBE("HardenMqtt/Secured/Pairing/+");
+					await Mqtt.SUBSCRIBE("HardenMqtt/Secured/Pairing/Display/+");
 
 					// Pair device
 
@@ -354,8 +365,13 @@ namespace Sensor
 							{
 								lock (NrToKey)
 								{
-									if (NrToKey.TryGetValue(Nr, out string s))
-										PairedTo = s;
+									if (NrToKey.TryGetValue(Nr, out string SelectedKey) &&
+										KeyToDeviceId.TryGetValue(SelectedKey, out string SelectedId))
+									{
+										PairedTo = SelectedKey;
+
+										Log.Informational("Pairing to " + SelectedId, DeviceID);
+									}
 								}
 							}
 
@@ -373,7 +389,7 @@ namespace Sensor
 
 					// Unsubscribe from pairing messages
 
-					await Mqtt.UNSUBSCRIBE("HardenMqtt/Secured/Pairing/+");
+					await Mqtt.UNSUBSCRIBE("HardenMqtt/Secured/Pairing/Display/+");
 				}
 
 				// Normal operation
@@ -503,7 +519,7 @@ namespace Sensor
 			await ReportSensorDataSecuredPublic(SensorData, Mqtt, "HardenMqtt/Secured/Public/" + Convert.ToBase64String(Cipher.PublicKey), DeviceID, Cipher);
 
 			if (PairedPublicKey is null)
-				await PublishString(Mqtt, "HardenMqtt/Secured/Pairing/" + Convert.ToBase64String(Cipher.PublicKey), DeviceType, false);
+				await PublishString(Mqtt, "HardenMqtt/Secured/Pairing/" + DeviceType + "/" + Convert.ToBase64String(Cipher.PublicKey), DeviceID, false);
 			else
 				await ReportSensorDataSecuredConfidential(SensorData, Mqtt, "HardenMqtt/Secured/Confidential/" + Convert.ToBase64String(Cipher.PublicKey), DeviceID, Cipher, PairedPublicKey);
 		}
