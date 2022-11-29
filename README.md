@@ -16,9 +16,9 @@ sensor data in the following ways:
 Signatures are based on public key cryptography, where public keys are transmitted over MQTT as well, and private keys are used
 to sign information being published. The Twister Edwards Curve `Ed25519` is used in these examples.
 
-For encryption to be done, a hybrid cipher is used, where the asymetric ciphers (`Ed25519`) are used to derive shared secrets, 
-are then used by a symmetric cipher (`AES-256`). As these shared secrets are never transmitted, thety can be used to securely 
-to encrypt the content being communicated. 
+For encryption to be done, a hybrid cipher is used, where the asymetric ciphers (`Ed25519`) are used to derive shared secrets
+using `EdDSA` and `SHA3-256`. These shared secrets are then used by a symmetric cipher (`AES-256`). As these shared secrets are 
+never transmitted, they can be used to securely to encrypt the content being communicated. 
 
 To achieve this level of encryption, pairing of devices and sensors have to be performed. This is also done publicly, but
 securely over MQTT, highlighting the fact that malicious users can hijack the pairing process as well, if able to. Public key
