@@ -27,6 +27,9 @@ namespace Sensor
 	/// This project implements a simple sensor that gets its values from the Internet and publishes it on an MQTT Broker. 
 	/// It publishes the information in five different ways: Unstructured, Structured, Interoperable (first three unsecured), 
 	/// and public, Confidential (last two secured).
+	/// 
+	/// Note: Most of the program is written in linear fashion, so the reader can read as much as possible, from top to bottom, 
+	/// without having to scroll or switch files.
 	/// </summary>
 	internal class Program
 	{
