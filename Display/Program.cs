@@ -297,15 +297,15 @@ namespace Display
 
 				string MenuTopic(int Menu)
 				{
-					switch (Menu)
+					return Menu switch
 					{
-						case 1: return "HardenMqtt/Unsecured/Unstructured/" + PairedToId + "/+";
-						case 2: return "HardenMqtt/Unsecured/Structured/" + PairedToId;
-						case 3: return "HardenMqtt/Unsecured/Interoperable/" + PairedToId;
-						case 4: return "HardenMqtt/Secured/Public/" + PairedToKey;
-						case 5: return "HardenMqtt/Secured/Confidential/" + PairedToKey;
-						default: return string.Empty;
-					}
+						1 => "HardenMqtt/Unsecured/Unstructured/" + PairedToId + "/+",
+						2 => "HardenMqtt/Unsecured/Structured/" + PairedToId,
+						3 => "HardenMqtt/Unsecured/Interoperable/" + PairedToId,
+						4 => "HardenMqtt/Secured/Public/" + PairedToKey,
+						5 => "HardenMqtt/Secured/Confidential/" + PairedToKey,
+						_ => string.Empty,
+					};
 				};
 
 				async Task ChangeMenu(int Menu)
