@@ -1,13 +1,13 @@
 ﻿using System.Collections.Generic;
 using System.Text;
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using Waher.Content;
 using Waher.Events;
 using Waher.Networking.MQTT;
-using Waher.Security;
 using Waher.Security.EllipticCurves;
-using System.Threading;
+using Waher.Security.SHA3;
 
 namespace Pairing
 {
@@ -71,6 +71,7 @@ namespace Pairing
 			Dictionary<int, string> NrToKey = new Dictionary<int, string>();
 			Dictionary<string, string> KeyToDeviceId = new Dictionary<string, string>();
 			TaskCompletionSource<bool> Completed = new TaskCompletionSource<bool>();
+			SHA3_256 Sha3 = new SHA3_256();
 
 			async Task CheckPairing(object sender, MqttContent e)
 			{
@@ -106,7 +107,7 @@ namespace Pairing
 								try
 								{
 									byte[] RemoteKeyBin = Base64Url.Decode(RemoteKey);
-									LocalCipher.GetSharedKey(RemoteKeyBin, Hashes.ComputeSHA256Hash);
+									LocalCipher.GetSharedKey(RemoteKeyBin, Sha3.ComputeVariable);
 								}
 								catch
 								{

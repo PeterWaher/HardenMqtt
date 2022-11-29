@@ -18,8 +18,8 @@ using Waher.Runtime.Inventory;
 using Waher.Runtime.Inventory.Loader;
 using Waher.Runtime.Queue;
 using Waher.Runtime.Settings;
-using Waher.Security;
 using Waher.Security.EllipticCurves;
+using Waher.Security.SHA3;
 using Waher.Things.SensorData;
 
 namespace Display
@@ -771,7 +771,7 @@ namespace Display
 			if (c <= 32)
 				return;
 
-			byte[] Key = Cipher.GetSharedKey(RemotePublicKey, Hashes.ComputeSHA256Hash);
+			byte[] Key = Cipher.GetSharedKey(RemotePublicKey, sha3.ComputeVariable);
 			byte[] Nonce = new byte[16];
 			byte[] IV = new byte[16];
 			byte[] Encrypted = new byte[c - 32];
@@ -805,6 +805,8 @@ namespace Display
 			foreach (Field Field in SensorData.Fields)
 				PrintField(Field.Name, Field.ValueString, RowPerField);
 		}
+
+		private static readonly SHA3_256 sha3 = new SHA3_256();
 
 		#endregion
 	}

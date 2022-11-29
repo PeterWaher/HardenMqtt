@@ -16,8 +16,8 @@ using Waher.Persistence.Files;
 using Waher.Runtime.Inventory;
 using Waher.Runtime.Inventory.Loader;
 using Waher.Runtime.Settings;
-using Waher.Security;
 using Waher.Security.EllipticCurves;
+using Waher.Security.SHA3;
 using Waher.Things;
 using Waher.Things.SensorData;
 
@@ -763,8 +763,7 @@ namespace Sensor
 
 			Xml = GetInteroperableXml(SensorData, DeviceID, Signature);
 			Bin = Encoding.UTF8.GetBytes(Xml);
-
-			byte[] Key = Cipher.GetSharedKey(RemotePublicKey, Hashes.ComputeSHA256Hash);
+			byte[] Key = Cipher.GetSharedKey(RemotePublicKey, sha3.ComputeVariable);
 			byte[] Nonce = GetRandomBytes(16);
 			byte[] IV = GetRandomBytes(16);
 
@@ -783,6 +782,8 @@ namespace Sensor
 
 			await Mqtt.PUBLISH(Topic, MqttQualityOfService.AtMostOnce, true, ToSend);
 		}
+
+		private static readonly SHA3_256 sha3 = new SHA3_256();
 
 		private static byte[] GetRandomBytes(int N)
 		{
