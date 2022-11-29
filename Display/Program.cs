@@ -11,9 +11,10 @@ using Waher.Runtime.Inventory.Loader;
 using Waher.Runtime.Inventory;
 using Waher.Runtime.Settings;
 using Waher.Security.EllipticCurves;
-using System.Collections.Generic;
-using Waher.Security;
 using Waher.Content;
+using Pairing;
+using System.Security.Cryptography;
+using System.Threading;
 
 namespace Display
 {
@@ -36,6 +37,8 @@ namespace Display
 
 			try
 			{
+				#region Setup
+
 				// First, initialize environment and type inventory. This creates an inventory of types used by the application.
 				// This is important for tasks such as data persistence, for example.
 				TypesLoader.Initialize();
@@ -55,6 +58,10 @@ namespace Display
 				// Starting internal modules
 				await Types.StartAllModules(60000);
 
+				#endregion
+
+				#region Device ID
+
 				// Configuring Device ID
 
 				DeviceID = await RuntimeSettings.GetAsync("Device.ID", string.Empty);
@@ -68,6 +75,10 @@ namespace Display
 				}
 				else
 					Log.Informational("Using Device ID: " + DeviceID, DeviceID);
+
+				#endregion
+
+				#region Keys
 
 				// Configuring Keys
 
@@ -102,6 +113,10 @@ namespace Display
 
 				Log.Informational("Public key: " + Base64Url.Encode(Cipher.PublicKey), DeviceID);
 
+				#endregion
+
+				#region Loading Pairing Information
+
 				// Checking pairing information
 
 				string PairedToKey = await RuntimeSettings.GetAsync("Pair.Ed25519.Public", string.Empty);
@@ -126,6 +141,10 @@ namespace Display
 					Log.Informational("Not paired to any device.", DeviceID);
 				else
 					Log.Informational("Paired to: " + PairedToKey + " (" + PairedToId + ")", DeviceID);
+
+				#endregion
+
+				#region Connecting to MQTT Broker
 
 				// Configuring and connecting to MQTT Server
 
@@ -212,6 +231,10 @@ namespace Display
 				}
 				while (!MqttConnected);
 
+				#endregion
+
+				#region Event Logging
+
 				// Register MQTT event sink, allowing developer to follow what happens with devices.
 
 				Log.Register(new MqttEventSink("MQTT Event Sink", Mqtt, "HardenMqtt/Events", true));
@@ -219,113 +242,42 @@ namespace Display
 
 				// Configure CTRL+Z to close application gracefully.
 
-				bool Continue = true;
+				#endregion
+
+				#region CTRL-Z support
+
+				CancellationTokenSource Operation = new CancellationTokenSource();
 
 				Console.CancelKeyPress += (_, e) =>
 				{
 					e.Cancel = true;
-					Continue = false;
+					Operation.Cancel();
 				};
+
+				#endregion
+
+				#region Pairing
 
 				// Configure pairing
 
 				if (PairedToBin is null)
 				{
-					Dictionary<int, string> NrToKey = new Dictionary<int, string>();
-					Dictionary<string, string> KeyToDeviceId = new Dictionary<string, string>();
+					PairingInformation Info = await DevicePairing.PairDevice(Mqtt, Cipher, DeviceID,
+						"Display", "Sensor", GetRandomBytes(32), true, Operation.Token);
 
-					// Receiving public key of device ready to be paired.
-
-					Task CheckPairing(object sender, MqttContent e)
+					if (!(Info is null))
 					{
-						if (e.Topic.StartsWith("HardenMqtt/Secured/Pairing/Sensor/"))
-						{
-							lock (NrToKey)
-							{
-								string Key = e.Topic[34..];
+						PairedToKey = Info.SlavePublicKey;
+						PairedToId = Info.SlaveId;
 
-								if (Key.Length < 100 && e.Data.Length < 100 && !KeyToDeviceId.ContainsKey(Key))
-								{
-									string RemoteDeviceId = Encoding.UTF8.GetString(e.Data);
-
-									try
-									{
-										byte[] KeyBin = Base64Url.Decode(Key);
-										Cipher.GetSharedKey(KeyBin, Hashes.ComputeSHA256Hash);
-									}
-									catch
-									{
-										return Task.CompletedTask;  // Invalid key
-									}
-
-									int KeyNr = NrToKey.Count + 1;
-									NrToKey[KeyNr] = Key;
-									KeyToDeviceId[Key] = RemoteDeviceId;
-
-									StringBuilder sb = new StringBuilder();
-
-									sb.Append("Device ready to be paired: ");
-									sb.Append(KeyNr);
-									sb.Append(". Display, ");
-									sb.Append(RemoteDeviceId);
-									sb.Append(": ");
-									sb.Append(Key);
-
-									Log.Notice(sb.ToString(), DeviceID);
-								}
-							}
-						}
-
-						return Task.CompletedTask;
-					};
-
-					Mqtt.OnContentReceived += CheckPairing;
-
-					// Subscribe to pairing messages
-
-					await Mqtt.SUBSCRIBE("HardenMqtt/Secured/Pairing/Sensor/+");
-
-					// Pair device
-
-					while (PairedToBin is null)
-					{
-						PairedToKey = UserInput("Public Key of remote device", PairedToKey ?? string.Empty);
-
-						try
-						{
-							if (int.TryParse(PairedToKey, out int Nr))
-							{
-								lock (NrToKey)
-								{
-									if (NrToKey.TryGetValue(Nr, out string SelectedKey) &&
-										KeyToDeviceId.TryGetValue(SelectedKey, out string SelectedId))
-									{
-										PairedToKey = SelectedKey;
-										PairedToId = SelectedId;
-									}
-								}
-							}
-
-							byte[] Bin = Base64Url.Decode(PairedToKey);
-							Edwards25519 Temp = new Edwards25519(Bin);
-
-							PairedToBin = Bin;
-							await RuntimeSettings.SetAsync("Pair.Ed25519.Public", PairedToKey);
-							await RuntimeSettings.SetAsync("Pair.Id", PairedToId);
-
-							Log.Informational("Pairing to " + PairedToKey + " (" + PairedToId + ")", DeviceID);
-						}
-						catch (Exception)
-						{
-							Log.Error("Invalid public key provided during pairing.", DeviceID);
-						}
+						await RuntimeSettings.SetAsync("Pair.Ed25519.Public", PairedToKey);
+						await RuntimeSettings.SetAsync("Pair.Id", PairedToId);
 					}
-
-					// Unsubscribe from pairing messages
-
-					Mqtt.OnContentReceived -= CheckPairing;
-					await Mqtt.UNSUBSCRIBE("HardenMqtt/Secured/Pairing/Sensor/+");
 				}
+
+				#endregion
+
+				#region Receiving Sensor Data
 
 				Mqtt.OnContentReceived += (sender, e) =>
 				{
@@ -370,12 +322,16 @@ namespace Display
 					"HardenMqtt/Secured/Public/" + PairedToKey,
 					"HardenMqtt/Secured/Confidential/" + PairedToKey);
 
-				// Normal operation
+				#endregion
+
+				#region Main loop
 
 				Log.Informational("Display application started... Press CTRL+C to terminate the application.", DeviceID);
 
-				while (Continue)
+				while (!Operation.IsCancellationRequested)
 					await Task.Delay(100);
+
+				#endregion
 			}
 			catch (Exception ex)
 			{
@@ -475,5 +431,17 @@ namespace Display
 
 		#endregion
 
+		#region Data Publication
+
+		private static byte[] GetRandomBytes(int N)
+		{
+			byte[] Result = new byte[N];
+			rnd.GetBytes(Result);
+			return Result;
+		}
+
+		private static readonly RandomNumberGenerator rnd = RandomNumberGenerator.Create();
+
+		#endregion
 	}
 }

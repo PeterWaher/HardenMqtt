@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Pairing;
+using System;
 using System.Collections.Generic;
 using System.Security.Cryptography;
 using System.Text;
@@ -43,6 +44,8 @@ namespace Sensor
 
 			try
 			{
+				#region Setup
+
 				// First, initialize environment and type inventory. This creates an inventory of types used by the application.
 				// This is important for tasks such as data persistence, for example.
 				TypesLoader.Initialize();
@@ -62,6 +65,10 @@ namespace Sensor
 				// Starting internal modules
 				await Types.StartAllModules(60000);
 
+				#endregion
+
+				#region Device ID 
+
 				// Configuring Device ID
 
 				DeviceID = await RuntimeSettings.GetAsync("Device.ID", string.Empty);
@@ -75,6 +82,10 @@ namespace Sensor
 				}
 				else
 					Log.Informational("Using Device ID: " + DeviceID, DeviceID);
+
+				#endregion
+
+				#region Keys
 
 				// Configuring Keys
 
@@ -109,6 +120,10 @@ namespace Sensor
 
 				Log.Informational("Public key: " + Base64Url.Encode(Cipher.PublicKey), DeviceID);
 
+				#endregion
+
+				#region Loading Pairing Information
+
 				// Checking pairing information
 
 				string PairedToKey = await RuntimeSettings.GetAsync("Pair.Ed25519.Public", string.Empty);
@@ -138,6 +153,10 @@ namespace Sensor
 					Log.Informational("Not paired to any device.", DeviceID);
 				else
 					Log.Informational("Paired to: " + PairedToKey + " (" + PairedToId + ")", DeviceID);
+
+				#endregion
+
+				#region Connecting to MQTT Broker
 
 				// Configuring and connecting to MQTT Server
 
@@ -224,10 +243,18 @@ namespace Sensor
 				}
 				while (!MqttConnected);
 
+				#endregion
+
+				#region Event Logging
+
 				// Register MQTT event sink, allowing developer to follow what happens with devices.
 
 				Log.Register(new MqttEventSink("MQTT Event Sink", Mqtt, "HardenMqtt/Events", true));
 				Log.Informational("Sensor connected to MQTT.", DeviceID);
+
+				#endregion
+
+				#region Sensor Configuration
 
 				// Configure and setup sensor
 				// For this example, we use weather data from Open Weather Map.
@@ -262,7 +289,7 @@ namespace Sensor
 						Api = new OpenWeatherMapApi(ApiKey, ApiLocation, ApiCountry);
 
 						WeatherInformation SensorData = await Api.GetData();
-						await ReportSensorData(SensorData, Mqtt, DeviceID, "Sensor", Cipher, PairedToBin);
+						await ReportSensorData(SensorData, Mqtt, DeviceID, Cipher, PairedToBin);
 
 						ApiConnected = true;
 						Log.Informational("Sensor connected to API.", DeviceID);
@@ -274,6 +301,10 @@ namespace Sensor
 				}
 				while (!ApiConnected);
 
+				#endregion
+
+				#region Sampling
+
 				// Schedule regular sensor data readouts
 
 				Timer = new Timer(async (_) =>
@@ -283,7 +314,7 @@ namespace Sensor
 						Log.Informational("Reading weather information.", DeviceID);
 
 						WeatherInformation SensorData = await Api.GetData();
-						await ReportSensorData(SensorData, Mqtt, DeviceID, "Sensor", Cipher, PairedToBin);
+						await ReportSensorData(SensorData, Mqtt, DeviceID, Cipher, PairedToBin);
 
 						Log.Informational("Weather data read. Publishing to MQTT.", DeviceID);
 					}
@@ -295,117 +326,49 @@ namespace Sensor
 
 				// Configure CTRL+Z to close application gracefully.
 
-				bool Continue = true;
+				#endregion
+
+				#region CTRL-Z support
+
+				CancellationTokenSource Operation = new CancellationTokenSource();
 
 				Console.CancelKeyPress += (_, e) =>
 				{
 					e.Cancel = true;
-					Continue = false;
+					Operation.Cancel();
 				};
+
+				#endregion
+
+				#region Pairing
 
 				// Configure pairing
 
 				if (PairedToBin is null)
 				{
-					Dictionary<int, string> NrToKey = new Dictionary<int, string>();
-					Dictionary<string, string> KeyToDeviceId = new Dictionary<string, string>();
+					PairingInformation Info = await DevicePairing.PairDevice(Mqtt, Cipher, DeviceID,
+						"Sensor", "Display", GetRandomBytes(32), false, Operation.Token);
 
-					// Receiving public key of device ready to be paired.
-
-					Mqtt.OnContentReceived += (sender, e) =>
+					if (!(Info is null))
 					{
-						if (e.Topic.StartsWith("HardenMqtt/Secured/Pairing/Display/"))
-						{
-							lock (NrToKey)
-							{
-								string Key = e.Topic[35..];
+						PairedToKey = Info.MasterPublicKey;
+						PairedToId = Info.MasterId;
 
-								if (Key.Length < 100 && e.Data.Length < 100 && !KeyToDeviceId.ContainsKey(Key))
-								{
-									string RemoteDeviceId = Encoding.UTF8.GetString(e.Data);
-
-									try
-									{
-										byte[] KeyBin = Base64Url.Decode(Key);
-										Cipher.GetSharedKey(KeyBin, Hashes.ComputeSHA256Hash);
-									}
-									catch
-									{
-										return Task.CompletedTask;  // Invalid key
-									}
-
-									int KeyNr = NrToKey.Count + 1;
-									NrToKey[KeyNr] = Key;
-									KeyToDeviceId[Key] = RemoteDeviceId;
-
-									StringBuilder sb = new StringBuilder();
-
-									sb.Append("Device ready to be paired: ");
-									sb.Append(KeyNr);
-									sb.Append(". Display, ");
-									sb.Append(RemoteDeviceId);
-									sb.Append(": ");
-									sb.Append(Key);
-
-									Log.Notice(sb.ToString(), DeviceID);
-								}
-							}
-						}
-
-						return Task.CompletedTask;
-					};
-
-					// Subscribe to pairing messages
-
-					await Mqtt.SUBSCRIBE("HardenMqtt/Secured/Pairing/Display/+");
-
-					// Pair device
-
-					while (PairedToBin is null)
-					{
-						PairedToKey = UserInput("Public Key of remote device", PairedToKey ?? string.Empty);
-
-						try
-						{
-							if (int.TryParse(PairedToKey, out int Nr))
-							{
-								lock (NrToKey)
-								{
-									if (NrToKey.TryGetValue(Nr, out string SelectedKey) &&
-										KeyToDeviceId.TryGetValue(SelectedKey, out string SelectedId))
-									{
-										PairedToKey = SelectedKey;
-										PairedToId = SelectedId;
-									}
-								}
-							}
-
-							byte[] Bin = Base64Url.Decode(PairedToKey);
-							Edwards25519 Temp = new Edwards25519(Bin);
-
-							PairedToBin = Bin;
-							await RuntimeSettings.SetAsync("Pair.Ed25519.Public", PairedToKey);
-							await RuntimeSettings.SetAsync("Pair.Id", PairedToId);
-
-							Log.Informational("Pairing to " + PairedToKey + " (" + PairedToId + ")", DeviceID);
-						}
-						catch (Exception)
-						{
-							Log.Error("Invalid public key provided during pairing.", DeviceID);
-						}
+						await RuntimeSettings.SetAsync("Pair.Ed25519.Public", PairedToKey);
+						await RuntimeSettings.SetAsync("Pair.Id", PairedToId);
 					}
-
-					// Unsubscribe from pairing messages
-
-					await Mqtt.UNSUBSCRIBE("HardenMqtt/Secured/Pairing/Display/+");
 				}
 
-				// Normal operation
+				#endregion
+
+				#region Main loop
 
 				Log.Informational("Sensor application started... Press CTRL+C to terminate the application.", DeviceID);
 
-				while (Continue)
+				while (!Operation.IsCancellationRequested)
 					await Task.Delay(100);
+
+				#endregion
 			}
 			catch (Exception ex)
 			{
@@ -518,7 +481,7 @@ namespace Sensor
 		/// <param name="DeviceID">Device ID</param>
 		/// <param name="Cipher">Cipher to use for security purposes.</param>
 		/// <param name="PairedPublicKey">Public Key of paired recipient.</param>
-		private static async Task ReportSensorData(WeatherInformation SensorData, MqttClient Mqtt, string DeviceID, string DeviceType,
+		private static async Task ReportSensorData(WeatherInformation SensorData, MqttClient Mqtt, string DeviceID,
 			EllipticCurve Cipher, byte[] PairedPublicKey)
 		{
 			await ReportSensorDataUnsecuredUnstructured(SensorData, Mqtt, "HardenMqtt/Unsecured/Unstructured/" + DeviceID);
@@ -526,9 +489,7 @@ namespace Sensor
 			await ReportSensorDataUnsecuredInteroperable(SensorData, Mqtt, "HardenMqtt/Unsecured/Interoperable/" + DeviceID, DeviceID);
 			await ReportSensorDataSecuredPublic(SensorData, Mqtt, "HardenMqtt/Secured/Public/" + Base64Url.Encode(Cipher.PublicKey), DeviceID, Cipher);
 
-			if (PairedPublicKey is null)
-				await PublishString(Mqtt, "HardenMqtt/Secured/Pairing/" + DeviceType + "/" + Base64Url.Encode(Cipher.PublicKey), DeviceID, false);
-			else
+			if (!(PairedPublicKey is null))
 				await ReportSensorDataSecuredConfidential(SensorData, Mqtt, "HardenMqtt/Secured/Confidential/" + Base64Url.Encode(Cipher.PublicKey), DeviceID, Cipher, PairedPublicKey);
 		}
 
@@ -783,11 +744,8 @@ namespace Sensor
 			Bin = Encoding.UTF8.GetBytes(Xml);
 
 			byte[] Key = Cipher.GetSharedKey(RemotePublicKey, Hashes.ComputeSHA256Hash);
-			byte[] Nonce = new byte[16];
-			byte[] IV = new byte[16];
-
-			rnd.GetBytes(Nonce);
-			rnd.GetBytes(IV);
+			byte[] Nonce = GetRandomBytes(16);
+			byte[] IV = GetRandomBytes(16);
 
 			using Aes Aes = Aes.Create();
 			Aes.BlockSize = 128;
@@ -803,6 +761,13 @@ namespace Sensor
 			Array.Copy(Encrypted, 0, ToSend, 32, Encrypted.Length);
 
 			await Mqtt.PUBLISH(Topic, MqttQualityOfService.AtMostOnce, true, ToSend);
+		}
+
+		private static byte[] GetRandomBytes(int N)
+		{
+			byte[] Result = new byte[N];
+			rnd.GetBytes(Result);
+			return Result;
 		}
 
 		private static readonly RandomNumberGenerator rnd = RandomNumberGenerator.Create();
