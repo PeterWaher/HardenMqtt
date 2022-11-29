@@ -554,12 +554,12 @@ namespace Display
 			Console.Clear();
 			RowPerField.Clear();
 
-			Print("1. Unstructured", 20, DisplayMode == 1, TextAlignment.Left);
-			Print("2. Structured", 20, DisplayMode == 2, TextAlignment.Left);
-			Print("3. Interoperable", 20, DisplayMode == 3, TextAlignment.Left);
-			Print("4. Signed", 20, DisplayMode == 4, TextAlignment.Left);
-			Print("5. Confidential", 20, DisplayMode == 5, TextAlignment.Left);
-			Print("CTRL+Z. Quit", 20, TextAlignment.Left);
+			Print("1. Unstructured", 20, DisplayMode == 1, TextAlignment.Center);
+			Print("2. Structured", 20, DisplayMode == 2, TextAlignment.Center);
+			Print("3. Interoperable", 20, DisplayMode == 3, TextAlignment.Center);
+			Print("4. Signed", 20, DisplayMode == 4, TextAlignment.Center);
+			Print("5. Confidential", 20, DisplayMode == 5, TextAlignment.Center);
+			Print("CTRL+Z. Quit", 20, TextAlignment.Center);
 
 			Console.Out.WriteLine();
 		}
@@ -589,6 +589,7 @@ namespace Display
 		public enum TextAlignment
 		{
 			Left,
+			Center,
 			Right
 		}
 
@@ -600,13 +601,36 @@ namespace Display
 				Console.Out.Write(s[0..MaxLen]);
 			else
 			{
-				if (Alignment == TextAlignment.Right && i < MaxLen)
-					Console.Out.Write(new string(' ', MaxLen - i));
+				int NrLeft;
+				int NrRight;
+
+				switch (Alignment)
+				{
+					case TextAlignment.Left:
+					default:
+						NrLeft = 0;
+						NrRight = MaxLen - i;
+						break;
+
+					case TextAlignment.Right:
+						NrLeft = MaxLen - i;
+						NrRight = 0;
+						break;
+
+					case TextAlignment.Center:
+						NrLeft = (MaxLen - i) / 2;
+						NrRight = (MaxLen - i) - NrLeft;
+						break;
+
+				}
+
+				if (NrLeft > 0)
+					Console.Out.Write(new string(' ', NrLeft));
 
 				Console.Out.Write(s);
 
-				if (Alignment == TextAlignment.Left && i < MaxLen)
-					Console.Out.Write(new string(' ', MaxLen - i));
+				if (NrRight > 0)
+					Console.Out.Write(new string(' ', NrRight));
 			}
 		}
 
