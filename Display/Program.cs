@@ -15,6 +15,8 @@ using Waher.Content;
 using Pairing;
 using System.Security.Cryptography;
 using System.Threading;
+using Waher.Runtime.Queue;
+using Waher.Script.Constants;
 
 namespace Display
 {
@@ -91,7 +93,7 @@ namespace Display
 				{
 					try
 					{
-						Secret = Base64Url.Decode(p);	// Note: Use BAS64URL encoding instead of BASE64, to avoid path characters in topics.
+						Secret = Base64Url.Decode(p);   // Note: Use BAS64URL encoding instead of BASE64, to avoid path characters in topics.
 					}
 					catch (Exception)
 					{
@@ -120,7 +122,7 @@ namespace Display
 				// Checking pairing information
 
 				string PairedToKey = await RuntimeSettings.GetAsync("Pair.Ed25519.Public", string.Empty);
-				string PairedToId = await RuntimeSettings.GetAsync("Pair.ID", string.Empty);
+				string PairedToId = await RuntimeSettings.GetAsync("Pair.Id", string.Empty);
 				byte[] PairedToBin;
 
 				if (string.IsNullOrEmpty(PairedToKey))
@@ -247,11 +249,13 @@ namespace Display
 				#region CTRL-Z support
 
 				CancellationTokenSource Operation = new CancellationTokenSource();
+				AsyncQueue<MqttContent> InputQueue = new AsyncQueue<MqttContent>();
 
 				Console.CancelKeyPress += (_, e) =>
 				{
 					e.Cancel = true;
 					Operation.Cancel();
+					InputQueue.Add(null);
 				};
 
 				#endregion
@@ -281,42 +285,12 @@ namespace Display
 
 				Mqtt.OnContentReceived += (sender, e) =>
 				{
-					string[] Parts = e.Topic.Split('/');
-
-					if (Parts.Length >= 4 && Parts[0] == "HardenMqtt")
-					{
-						if (Parts[1] == "Unsecured")
-						{
-							if (Parts[2] == PairedToId)
-							{
-								switch (Parts[2])
-								{
-									case "Unstructured":        // Unstructured reception (unsecured)
-									case "Structured":          // Structured reception (unsecured)
-									case "Interoperable":       // Interoperable reception (unsecured)
-										break;
-								}
-							}
-						}
-						else if (Parts[1] == "Secured")
-						{
-							if (Parts[2] == PairedToKey)
-							{
-								switch (Parts[2])
-								{
-									case "Public":              // Interoperable, signed, public reception (secured)
-									case "Confidential":        // Interoperable, signed, confidential reception (secured)
-										break;
-								}
-							}
-						}
-					}
-
+					InputQueue.Add(e);
 					return Task.CompletedTask;
 				};
 
 				await Mqtt.SUBSCRIBE(
-					"HardenMqtt/Unsecured/Unstructured/" + PairedToId,
+					"HardenMqtt/Unsecured/Unstructured/" + PairedToId + "/+",
 					"HardenMqtt/Unsecured/Structured/" + PairedToId,
 					"HardenMqtt/Unsecured/Interoperable/" + PairedToId,
 					"HardenMqtt/Secured/Public/" + PairedToKey,
@@ -328,8 +302,83 @@ namespace Display
 
 				Log.Informational("Display application started... Press CTRL+C to terminate the application.", DeviceID);
 
+				DateTime Last = DateTime.MinValue;
+				DateTime Current;
+				int DisplayMode = 1;
+
+				// Make sure the main loop can check the keyboard often, to switch display mode.
+				using Timer CheckKeyboardTimer = new Timer((_) => InputQueue.Add(null), null, 100, 100);
+
 				while (!Operation.IsCancellationRequested)
+				{
+					if (Console.KeyAvailable)
+					{
+						ConsoleKeyInfo Key = Console.ReadKey(true);
+
+						if (Key.KeyChar >= '1' && Key.KeyChar <= '5')
+						{
+							DisplayMode = Key.KeyChar - '0';
+							ShowMenu(DisplayMode);
+						}
+						else
+							Console.Beep();
+					}
+
+					MqttContent e = await InputQueue.Wait();
+					if (e is null)
+						continue;
+
+					string[] Parts = e.Topic.Split('/');
+
+					if (Parts.Length >= 4 && Parts[0] == "HardenMqtt")
+					{
+						Current = DateTime.Now;
+						if (Current.Subtract(Last).TotalSeconds > 5)
+						{
+							ShowMenu(DisplayMode);
+							Last = Current;
+						}
+
+						if (Parts[1] == "Unsecured")
+						{
+							if (Parts[3] == PairedToId)
+							{
+								switch (Parts[2])
+								{
+									case "Unstructured":        // Unstructured reception (unsecured)
+										UnstructuredDataReceived(e.Data);
+										break;
+
+									case "Structured":          // Structured reception (unsecured)
+										StructuredDataReceived(e.Data);
+										break;
+
+									case "Interoperable":       // Interoperable reception (unsecured)
+										InteroperableDataReceived(e.Data);
+										break;
+								}
+							}
+						}
+						else if (Parts[1] == "Secured")
+						{
+							if (Parts[3] == PairedToKey)
+							{
+								switch (Parts[2])
+								{
+									case "Public":              // Interoperable, signed, public reception (secured)
+										InteroperableSignedPublicDataReceived(e.Data);
+										break;
+
+									case "Confidential":        // Interoperable, signed, confidential reception (secured)
+										InteroperableConfidentialDataReceived(e.Data);
+										break;
+								}
+							}
+						}
+					}
+
 					await Task.Delay(100);
+				}
 
 				#endregion
 			}
@@ -441,6 +490,81 @@ namespace Display
 		}
 
 		private static readonly RandomNumberGenerator rnd = RandomNumberGenerator.Create();
+
+		#endregion
+
+		#region Data Presentation
+
+		private static void ShowMenu(int DisplayMode)
+		{
+			Console.Clear();
+
+			Print("1. Unstructured", 20, DisplayMode == 1);
+			Print("2. Structured", 20, DisplayMode == 2);
+			Print("3. Interoperable", 20, DisplayMode == 3);
+			Print("4. Signed", 20, DisplayMode == 4);
+			Print("5. Confidential", 20, DisplayMode == 5);
+			Print("CTRL+Z. Quit", 20);
+
+			Console.Out.WriteLine();
+		}
+
+		private static void Print(string s, int MaxLen, bool Selected)
+		{
+			if (Selected)
+				Print(s, MaxLen, ConsoleColor.White, ConsoleColor.Blue);
+			else
+				Print(s, MaxLen);
+		}
+
+		private static void Print(string s, int MaxLen, ConsoleColor FgColor, ConsoleColor BgColor)
+		{
+			ConsoleColor FgBak = Console.ForegroundColor;
+			ConsoleColor BgBak = Console.BackgroundColor;
+
+			Console.ForegroundColor = FgColor;
+			Console.BackgroundColor = BgColor;
+
+			Print(s, MaxLen);
+
+			Console.ForegroundColor = FgBak;
+			Console.BackgroundColor = BgBak;
+		}
+
+		private static void Print(string s, int MaxLen)
+		{
+			int i = s.Length;
+
+			if (i > MaxLen)
+				Console.Out.Write(s[0..MaxLen]);
+			else
+			{
+				Console.Out.Write(s);
+
+				if (i < MaxLen)
+					Console.Out.Write(new string(' ', MaxLen - i));
+			}
+		}
+
+		private static void UnstructuredDataReceived(byte[] Data)
+		{
+		}
+
+		private static void StructuredDataReceived(byte[] Data)
+		{
+		}
+
+		private static void InteroperableDataReceived(byte[] Data)
+		{
+		}
+
+		private static void InteroperableSignedPublicDataReceived(byte[] Data)
+		{
+		}
+
+		private static void InteroperableConfidentialDataReceived(byte[] Data)
+		{
+		}
 
 		#endregion
 	}

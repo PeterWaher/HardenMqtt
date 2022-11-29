@@ -15,6 +15,7 @@
     <PackageReference Include="Waher.Persistence.Files" Version="1.9.4" />
     <PackageReference Include="Waher.Runtime.Inventory" Version="1.1.2" />
     <PackageReference Include="Waher.Runtime.Inventory.Loader" Version="1.0.9" />
+    <PackageReference Include="Waher.Runtime.Queue" Version="1.0.1" />
     <PackageReference Include="Waher.Runtime.Settings" Version="1.0.10" />
     <PackageReference Include="Waher.Security" Version="1.0.8" />
     <PackageReference Include="Waher.Security.EllipticCurves" Version="1.0.9" />
