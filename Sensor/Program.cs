@@ -510,7 +510,7 @@ namespace Sensor
 			await PublishString(Mqtt, BaseTopic + "/IconUrl", SensorData.IconUrl, true);
 			await PublishString(Mqtt, BaseTopic + "/Description", SensorData.Description, true);
 			await PublishString(Mqtt, BaseTopic + "/TimeZone", SensorData.TimeZone?.ToString() ?? string.Empty, true);
-			await PublishString(Mqtt, BaseTopic + "/VisibilityMeters", (SensorData.VisibilityMeters?.ToString() ?? string.Empty, true) + " m", true);
+			await PublishString(Mqtt, BaseTopic + "/VisibilityMeters", (SensorData.VisibilityMeters?.ToString() ?? string.Empty) + " m", true);
 			await PublishString(Mqtt, BaseTopic + "/Longitude", (SensorData.LongitudeDegrees?.ToString() ?? string.Empty) + "°", true);
 			await PublishString(Mqtt, BaseTopic + "/Latitude", (SensorData.LatitudeDegrees?.ToString() ?? string.Empty) + "°", true);
 			await PublishString(Mqtt, BaseTopic + "/Temperature", (SensorData.TemperatureCelcius?.ToString() ?? string.Empty) + "° C", true);
@@ -578,8 +578,8 @@ namespace Sensor
 
 			if (SensorData.TimeZone.HasValue)
 			{
-				Result.Add(new QuantityField(Ref, SensorData.Timestamp, "Time Zone",
-					SensorData.TimeZone.Value / 3600.0, 2, "h", FieldType.Identity, FieldQoS.AutomaticReadout));
+				Result.Add(new TimeField(Ref, SensorData.Timestamp, "Time Zone",
+					SensorData.TimeZone.Value, FieldType.Identity, FieldQoS.AutomaticReadout));
 			}
 
 			if (SensorData.VisibilityMeters.HasValue)

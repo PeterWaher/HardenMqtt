@@ -76,7 +76,7 @@ namespace Sensor
 				Result.Id = Obj.ToString();
 
 			if (Response.TryGetValue("timezone", out Obj) && Obj is int TimeZone)
-				Result.TimeZone = TimeZone;
+				Result.TimeZone = TimeSpan.FromSeconds(TimeZone);
 
 			if (Response.TryGetValue("visibility", out Obj) && Obj is int Visibility)
 				Result.VisibilityMeters = Visibility;

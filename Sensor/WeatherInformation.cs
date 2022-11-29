@@ -25,7 +25,7 @@ namespace Sensor
 		/// <summary>
 		/// Time zone
 		/// </summary>
-		public int? TimeZone { get; set; }
+		public TimeSpan? TimeZone { get; set; }
 
 		/// <summary>
 		/// Visibility, in meters
