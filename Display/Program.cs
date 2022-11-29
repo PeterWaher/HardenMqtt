@@ -126,23 +126,23 @@ namespace Display
 
 				string PairedToKey = await RuntimeSettings.GetAsync("Pair.Ed25519.Public", string.Empty);
 				string PairedToId = await RuntimeSettings.GetAsync("Pair.Id", string.Empty);
-				byte[] PairedToBin;
+				byte[] PairedToKeyBin;
 
 				if (string.IsNullOrEmpty(PairedToKey))
-					PairedToBin = null;
+					PairedToKeyBin = null;
 				else
 				{
 					try
 					{
-						PairedToBin = Base64Url.Decode(PairedToKey);
+						PairedToKeyBin = Base64Url.Decode(PairedToKey);
 					}
 					catch
 					{
-						PairedToBin = null;
+						PairedToKeyBin = null;
 					}
 				}
 
-				if (PairedToBin is null)
+				if (PairedToKeyBin is null)
 					Log.Informational("Not paired to any device.", DeviceID);
 				else
 					Log.Informational("Paired to: " + PairedToKey + " (" + PairedToId + ")", DeviceID);
@@ -267,7 +267,7 @@ namespace Display
 
 				// Configure pairing
 
-				if (PairedToBin is null)
+				if (PairedToKeyBin is null)
 				{
 					PairingInformation Info = await DevicePairing.PairDevice(Mqtt, Cipher, DeviceID,
 						"Display", "Sensor", GetRandomBytes(32), true, Operation.Token);
@@ -375,12 +375,12 @@ namespace Display
 									{
 										case "Public":              // Interoperable, signed, public reception (secured)
 											if (DisplayMode == 4)
-												InteroperableSignedPublicDataReceived(e.Data, RowPerField);
+												InteroperableSignedPublicDataReceived(e.Data, Cipher, PairedToKeyBin, RowPerField);
 											break;
 
 										case "Confidential":        // Interoperable, signed, confidential reception (secured)
 											if (DisplayMode == 5)
-												InteroperableConfidentialDataReceived(e.Data, RowPerField);
+												InteroperableConfidentialDataReceived(e.Data, Cipher, PairedToKeyBin, RowPerField);
 											break;
 									}
 								}
@@ -592,7 +592,7 @@ namespace Display
 
 				Print(Key, 25, ConsoleColor.White, ConsoleColor.Black, TextAlignment.Left);
 				Print(Value, 50, ConsoleColor.White, ConsoleColor.DarkGray, TextAlignment.Right);
-		
+
 				Console.Out.WriteLine();
 			}
 		}
@@ -621,27 +621,88 @@ namespace Display
 
 		private static void InteroperableDataReceived(byte[] Data, Dictionary<string, int> RowPerField)
 		{
-			if (Data.Length > 65536)
+			SensorData SensorData = ParseSensorData(Data);
+			if (SensorData is null)
 				return;
+
+			foreach (Field Field in SensorData.Fields)
+				PrintField(Field.Name, Field.ValueString, RowPerField);
+		}
+
+		private static SensorData ParseSensorData(byte[] Data)
+		{
+			if (Data.Length > 65536)
+				return null;
 
 			string Xml = Encoding.UTF8.GetString(Data);
 			XmlDocument Doc = new XmlDocument();
 			Doc.LoadXml(Xml);
 
-			SensorData SensorData = SensorClient.ParseFields(Doc.DocumentElement);
+			SensorData Result = SensorClient.ParseFields(Doc.DocumentElement);
+			if (Result?.Fields is null)
+				return null;
 
-			if (!(SensorData.Fields is null))
-			{
-				foreach (Field Field in SensorData.Fields)
-					PrintField(Field.Name, Field.ValueString, RowPerField);
-			}
+			return Result;
 		}
 
-		private static void InteroperableSignedPublicDataReceived(byte[] Data, Dictionary<string, int> RowPerField)
+		private static void InteroperableSignedPublicDataReceived(byte[] Data, EllipticCurve Cipher, byte[] RemotePublicKey,
+			Dictionary<string, int> RowPerField)
 		{
+			SensorData SensorData = ParseSignedSensorData(Data, Cipher, RemotePublicKey);
+			if (SensorData is null)
+				return;
+
+			foreach (Field Field in SensorData.Fields)
+				PrintField(Field.Name, Field.ValueString, RowPerField);
 		}
 
-		private static void InteroperableConfidentialDataReceived(byte[] Data, Dictionary<string, int> RowPerField)
+		private static SensorData ParseSignedSensorData(byte[] Data, EllipticCurve Cipher, byte[] RemotePublicKey)
+		{
+			SensorData SensorData = ParseSensorData(Data);
+			if (SensorData is null)
+				return null;
+
+			List<Field> BeforeSignature = new List<Field>();
+			string Signature = null;
+
+			foreach (Field Field in SensorData.Fields)
+			{
+				if (Field.Name == "Signature")
+				{
+					if (Signature is null)
+						Signature = Field.ValueString;
+					else
+						return null;
+				}
+				else
+					BeforeSignature.Add(Field);
+			}
+
+			if (string.IsNullOrEmpty(Signature) || Signature.Length > 100)
+				return null;
+
+			try
+			{
+				byte[] SignatureBin = Base64Url.Decode(Signature);
+
+				SensorData = new SensorData(BeforeSignature);
+
+				string Xml = SensorData.PayloadXml;
+				byte[] Bin = Encoding.UTF8.GetBytes(Xml);
+
+				if (!Cipher.Verify(Bin, RemotePublicKey, SignatureBin))
+					return null;
+			}
+			catch
+			{
+				return null;
+			}
+
+			return SensorData;
+		}
+
+		private static void InteroperableConfidentialDataReceived(byte[] Data, EllipticCurve Cipher, byte[] RemotePublicKey, 
+			Dictionary<string, int> RowPerField)
 		{
 		}
 
