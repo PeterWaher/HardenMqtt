@@ -261,6 +261,7 @@ namespace Sensor
 				// You will need an API Key for this. You can get one here: https://openweathermap.org/api
 
 				bool ApiConnected = false;
+				WeatherInformation SensorData = null;
 
 				do
 				{
@@ -288,7 +289,7 @@ namespace Sensor
 					{
 						Api = new OpenWeatherMapApi(ApiKey, ApiLocation, ApiCountry);
 
-						WeatherInformation SensorData = await Api.GetData();
+						SensorData = await Api.GetData();
 						await ReportSensorData(SensorData, Mqtt, DeviceID, Cipher, PairedToBin);
 
 						ApiConnected = true;
@@ -313,7 +314,7 @@ namespace Sensor
 					{
 						Log.Informational("Reading weather information.", DeviceID);
 
-						WeatherInformation SensorData = await Api.GetData();
+						SensorData = await Api.GetData();
 						await ReportSensorData(SensorData, Mqtt, DeviceID, Cipher, PairedToBin);
 
 						Log.Informational("Weather data read. Publishing to MQTT.", DeviceID);
@@ -363,10 +364,20 @@ namespace Sensor
 
 				#region Main loop
 
-				Log.Informational("Sensor application started... Press CTRL+C to terminate the application.", DeviceID);
+				Log.Informational("Sensor application started... Press CTRL+C to terminate the application. Press any other key to re-publish the most recent information to MQTT.", DeviceID);
 
 				while (!Operation.IsCancellationRequested)
+				{
+					if (Console.KeyAvailable)
+					{
+						Console.ReadKey(true);
+
+						if (!(SensorData is null))
+							await ReportSensorData(SensorData, Mqtt, DeviceID, Cipher, PairedToBin);
+					}
+
 					await Task.Delay(100);
+				}
 
 				#endregion
 			}
