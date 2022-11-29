@@ -334,10 +334,9 @@ namespace Display
 					{
 						Current = DateTime.Now;
 						if (Current.Subtract(Last).TotalSeconds > 5)
-						{
 							ShowMenu(DisplayMode);
-							Last = Current;
-						}
+						
+						Last = Current;
 
 						if (Parts[1] == "Unsecured")
 						{
@@ -346,7 +345,7 @@ namespace Display
 								switch (Parts[2])
 								{
 									case "Unstructured":        // Unstructured reception (unsecured)
-										UnstructuredDataReceived(e.Data);
+										UnstructuredDataReceived(e.Topic, e.Data);
 										break;
 
 									case "Structured":          // Structured reception (unsecured)
@@ -499,25 +498,25 @@ namespace Display
 		{
 			Console.Clear();
 
-			Print("1. Unstructured", 20, DisplayMode == 1);
-			Print("2. Structured", 20, DisplayMode == 2);
-			Print("3. Interoperable", 20, DisplayMode == 3);
-			Print("4. Signed", 20, DisplayMode == 4);
-			Print("5. Confidential", 20, DisplayMode == 5);
-			Print("CTRL+Z. Quit", 20);
+			Print("1. Unstructured", 20, DisplayMode == 1, TextAlignment.Left);
+			Print("2. Structured", 20, DisplayMode == 2, TextAlignment.Left);
+			Print("3. Interoperable", 20, DisplayMode == 3, TextAlignment.Left);
+			Print("4. Signed", 20, DisplayMode == 4, TextAlignment.Left);
+			Print("5. Confidential", 20, DisplayMode == 5, TextAlignment.Left);
+			Print("CTRL+Z. Quit", 20, TextAlignment.Left);
 
 			Console.Out.WriteLine();
 		}
 
-		private static void Print(string s, int MaxLen, bool Selected)
+		private static void Print(string s, int MaxLen, bool Selected, TextAlignment Alignment)
 		{
 			if (Selected)
-				Print(s, MaxLen, ConsoleColor.White, ConsoleColor.Blue);
+				Print(s, MaxLen, ConsoleColor.White, ConsoleColor.Blue, Alignment);
 			else
-				Print(s, MaxLen);
+				Print(s, MaxLen, Alignment);
 		}
 
-		private static void Print(string s, int MaxLen, ConsoleColor FgColor, ConsoleColor BgColor)
+		private static void Print(string s, int MaxLen, ConsoleColor FgColor, ConsoleColor BgColor, TextAlignment Alignment)
 		{
 			ConsoleColor FgBak = Console.ForegroundColor;
 			ConsoleColor BgBak = Console.BackgroundColor;
@@ -525,13 +524,19 @@ namespace Display
 			Console.ForegroundColor = FgColor;
 			Console.BackgroundColor = BgColor;
 
-			Print(s, MaxLen);
+			Print(s, MaxLen, Alignment);
 
 			Console.ForegroundColor = FgBak;
 			Console.BackgroundColor = BgBak;
 		}
 
-		private static void Print(string s, int MaxLen)
+		public enum TextAlignment
+		{
+			Left,
+			Right
+		}
+
+		private static void Print(string s, int MaxLen, TextAlignment Alignment)
 		{
 			int i = s.Length;
 
@@ -539,15 +544,28 @@ namespace Display
 				Console.Out.Write(s[0..MaxLen]);
 			else
 			{
+				if (Alignment == TextAlignment.Right && i < MaxLen)
+					Console.Out.Write(new string(' ', MaxLen - i));
+
 				Console.Out.Write(s);
 
-				if (i < MaxLen)
+				if (Alignment == TextAlignment.Left && i < MaxLen)
 					Console.Out.Write(new string(' ', MaxLen - i));
 			}
 		}
 
-		private static void UnstructuredDataReceived(byte[] Data)
+		private static void UnstructuredDataReceived(string Topic, byte[] Data)
 		{
+			int i = Topic.LastIndexOf('/');
+			if (i > 0)
+				Topic = Topic[(i + 1)..];
+
+			string Value = Encoding.UTF8.GetString(Data);
+
+			Print(Topic, 30, TextAlignment.Left);
+			Print(Value, 30, TextAlignment.Right);
+
+			Console.Out.WriteLine();
 		}
 
 		private static void StructuredDataReceived(byte[] Data)
