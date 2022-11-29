@@ -293,12 +293,46 @@ namespace Display
 					return Task.CompletedTask;
 				};
 
-				await Mqtt.SUBSCRIBE(
-					"HardenMqtt/Unsecured/Unstructured/" + PairedToId + "/+",
-					"HardenMqtt/Unsecured/Structured/" + PairedToId,
-					"HardenMqtt/Unsecured/Interoperable/" + PairedToId,
-					"HardenMqtt/Secured/Public/" + PairedToKey,
-					"HardenMqtt/Secured/Confidential/" + PairedToKey);
+				int DisplayMode = 0;
+
+				string MenuTopic(int Menu)
+				{
+					switch (Menu)
+					{
+						case 1: return "HardenMqtt/Unsecured/Unstructured/" + PairedToId + "/+";
+						case 2: return "HardenMqtt/Unsecured/Structured/" + PairedToId;
+						case 3: return "HardenMqtt/Unsecured/Interoperable/" + PairedToId;
+						case 4: return "HardenMqtt/Secured/Public/" + PairedToKey;
+						case 5: return "HardenMqtt/Secured/Confidential/" + PairedToKey;
+						default: return string.Empty;
+					}
+				};
+
+				async Task ChangeMenu(int Menu)
+				{
+					if (DisplayMode != Menu)
+					{
+						string Topic = MenuTopic(DisplayMode);
+
+						if (!string.IsNullOrEmpty(Topic))
+						{
+							Log.Informational("Unsubscribing from " + Topic, DeviceID);
+							await Mqtt.UNSUBSCRIBE(Topic);
+						}
+
+						Topic = MenuTopic(Menu);
+
+						if (!string.IsNullOrEmpty(Topic))
+						{
+							Log.Informational("Subscribing to " + Topic, DeviceID);
+							await Mqtt.SUBSCRIBE(Topic);
+						}
+
+						DisplayMode = Menu;
+					}
+				};
+
+				await ChangeMenu(1);
 
 				#endregion
 
@@ -309,7 +343,6 @@ namespace Display
 				Dictionary<string, int> RowPerField = new Dictionary<string, int>();
 				DateTime Last = DateTime.MinValue;
 				DateTime Current;
-				int DisplayMode = 1;
 
 				// Make sure the main loop can check the keyboard often, to switch display mode.
 				using Timer CheckKeyboardTimer = new Timer((_) => InputQueue.Add(null), null, 100, 100);
@@ -322,12 +355,12 @@ namespace Display
 
 						if (Key.KeyChar >= '1' && Key.KeyChar <= '5')
 						{
-							DisplayMode = Key.KeyChar - '0';
+							await ChangeMenu(Key.KeyChar - '0');
 							ShowMenu(DisplayMode, RowPerField);
 						}
 						else if (Key.Key >= ConsoleKey.F1 && Key.Key <= ConsoleKey.F5)
 						{
-							DisplayMode = Key.Key - ConsoleKey.F1 + 1;
+							await ChangeMenu(Key.Key - ConsoleKey.F1 + 1);
 							ShowMenu(DisplayMode, RowPerField);
 						}
 						else
