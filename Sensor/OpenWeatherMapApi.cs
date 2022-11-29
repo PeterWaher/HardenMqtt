@@ -61,7 +61,7 @@ namespace Sensor
 
 			object Obj = await InternetContent.GetAsync(Uri, new KeyValuePair<string, string>("Accept", "application/json"));
 			WeatherInformation Result = new WeatherInformation();
-			Result.Timestamp = DateTime.Now;
+			Result.Timestamp = Result.Readout = DateTime.UtcNow;
 
 			if (!(Obj is Dictionary<string, object> Response))
 				throw new Exception("Unexpected response from API.");

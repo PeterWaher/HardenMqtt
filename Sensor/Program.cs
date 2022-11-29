@@ -516,6 +516,7 @@ namespace Sensor
 		private static async Task ReportSensorDataUnsecuredUnstructured(WeatherInformation SensorData, MqttClient Mqtt,
 			string BaseTopic)
 		{
+			await PublishString(Mqtt, BaseTopic + "/Readout", SensorData.Readout.ToString(), true);
 			await PublishString(Mqtt, BaseTopic + "/Timestamp", SensorData.Timestamp.ToString(), true);
 			await PublishString(Mqtt, BaseTopic + "/Name", SensorData.Name, true);
 			await PublishString(Mqtt, BaseTopic + "/Id", SensorData.Id, true);
@@ -577,6 +578,12 @@ namespace Sensor
 		{
 			List<Field> Result = new List<Field>();
 			ThingReference Ref = new ThingReference(DeviceID);
+
+			Result.Add(new DateTimeField(Ref, SensorData.Timestamp, "Timestamp", SensorData.Timestamp,
+				FieldType.Status, FieldQoS.AutomaticReadout));
+
+			Result.Add(new DateTimeField(Ref, SensorData.Timestamp, "Readout", SensorData.Readout,
+				FieldType.Status, FieldQoS.AutomaticReadout));
 
 			if (!string.IsNullOrEmpty(SensorData.Name))
 			{

@@ -8,6 +8,11 @@ namespace Sensor
 	public class WeatherInformation
 	{
 		/// <summary>
+		/// Timestamp of readout
+		/// </summary>
+		public DateTime Readout { get; set; }
+
+		/// <summary>
 		/// Timestamp of weather
 		/// </summary>
 		public DateTime Timestamp { get; set; }
