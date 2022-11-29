@@ -127,7 +127,7 @@ namespace Sensor
 				// Checking pairing information
 
 				string PairedToKey = await RuntimeSettings.GetAsync("Pair.Ed25519.Public", string.Empty);
-				string PairedToId = await RuntimeSettings.GetAsync("Pair.ID", string.Empty);
+				string PairedToId = await RuntimeSettings.GetAsync("Pair.Id", string.Empty);
 				byte[] PairedToBin;
 
 				if (string.IsNullOrEmpty(PairedToKey))
