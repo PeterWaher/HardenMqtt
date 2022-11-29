@@ -17,6 +17,8 @@ using System.Security.Cryptography;
 using System.Threading;
 using Waher.Runtime.Queue;
 using Waher.Script.Constants;
+using System.Collections.Generic;
+using Waher.Script.Units.DerivedQuantities;
 
 namespace Display
 {
@@ -332,47 +334,59 @@ namespace Display
 
 					if (Parts.Length >= 4 && Parts[0] == "HardenMqtt")
 					{
-						Current = DateTime.Now;
-						if (Current.Subtract(Last).TotalSeconds > 5)
-							ShowMenu(DisplayMode);
-						
-						Last = Current;
-
-						if (Parts[1] == "Unsecured")
+						try
 						{
-							if (Parts[3] == PairedToId)
+							Current = DateTime.Now;
+							if (Current.Subtract(Last).TotalSeconds > 5)
+								ShowMenu(DisplayMode);
+
+							Last = Current;
+
+							if (Parts[1] == "Unsecured")
 							{
-								switch (Parts[2])
+								if (Parts[3] == PairedToId)
 								{
-									case "Unstructured":        // Unstructured reception (unsecured)
-										UnstructuredDataReceived(e.Topic, e.Data);
-										break;
+									switch (Parts[2])
+									{
+										case "Unstructured":        // Unstructured reception (unsecured)
+											if (DisplayMode == 1)
+												UnstructuredDataReceived(e.Topic, e.Data);
+											break;
 
-									case "Structured":          // Structured reception (unsecured)
-										StructuredDataReceived(e.Data);
-										break;
+										case "Structured":          // Structured reception (unsecured)
+											if (DisplayMode == 2)
+												StructuredDataReceived(e.Data);
+											break;
 
-									case "Interoperable":       // Interoperable reception (unsecured)
-										InteroperableDataReceived(e.Data);
-										break;
+										case "Interoperable":       // Interoperable reception (unsecured)
+											if (DisplayMode == 3)
+												InteroperableDataReceived(e.Data);
+											break;
+									}
+								}
+							}
+							else if (Parts[1] == "Secured")
+							{
+								if (Parts[3] == PairedToKey)
+								{
+									switch (Parts[2])
+									{
+										case "Public":              // Interoperable, signed, public reception (secured)
+											if (DisplayMode == 4)
+												InteroperableSignedPublicDataReceived(e.Data);
+											break;
+
+										case "Confidential":        // Interoperable, signed, confidential reception (secured)
+											if (DisplayMode == 5)
+												InteroperableConfidentialDataReceived(e.Data);
+											break;
+									}
 								}
 							}
 						}
-						else if (Parts[1] == "Secured")
+						catch (Exception ex)
 						{
-							if (Parts[3] == PairedToKey)
-							{
-								switch (Parts[2])
-								{
-									case "Public":              // Interoperable, signed, public reception (secured)
-										InteroperableSignedPublicDataReceived(e.Data);
-										break;
-
-									case "Confidential":        // Interoperable, signed, confidential reception (secured)
-										InteroperableConfidentialDataReceived(e.Data);
-										break;
-								}
-							}
+							Log.Critical(ex);
 						}
 					}
 
@@ -513,7 +527,7 @@ namespace Display
 			if (Selected)
 				Print(s, MaxLen, ConsoleColor.White, ConsoleColor.Blue, Alignment);
 			else
-				Print(s, MaxLen, Alignment);
+				Print(s, MaxLen, ConsoleColor.White, ConsoleColor.Black, Alignment);
 		}
 
 		private static void Print(string s, int MaxLen, ConsoleColor FgColor, ConsoleColor BgColor, TextAlignment Alignment)
@@ -570,6 +584,20 @@ namespace Display
 
 		private static void StructuredDataReceived(byte[] Data)
 		{
+			if (Data.Length > 65536)
+				return;
+
+			string Json = Encoding.UTF8.GetString(Data);
+			if (JSON.Parse(Json) is Dictionary<string, object> Parsed)
+			{
+				foreach (KeyValuePair<string, object> P in Parsed)
+				{
+					Print(P.Key, 30, TextAlignment.Left);
+					Print(P.Value?.ToString(), 30, TextAlignment.Right);
+
+					Console.Out.WriteLine();
+				}
+			}
 		}
 
 		private static void InteroperableDataReceived(byte[] Data)
