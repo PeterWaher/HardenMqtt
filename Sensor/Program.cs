@@ -373,7 +373,10 @@ namespace Sensor
 						Console.ReadKey(true);
 
 						if (!(SensorData is null))
+						{
+							Log.Informational("Republishing information on request from user.", DeviceID);
 							await ReportSensorData(SensorData, Mqtt, DeviceID, Cipher, PairedToBin);
+						}
 					}
 
 					await Task.Delay(100);
