@@ -18,6 +18,7 @@ using Waher.Runtime.Inventory;
 using Waher.Runtime.Inventory.Loader;
 using Waher.Runtime.Queue;
 using Waher.Runtime.Settings;
+using Waher.Security;
 using Waher.Security.EllipticCurves;
 using Waher.Things.SensorData;
 
@@ -322,6 +323,11 @@ namespace Display
 						if (Key.KeyChar >= '1' && Key.KeyChar <= '5')
 						{
 							DisplayMode = Key.KeyChar - '0';
+							ShowMenu(DisplayMode, RowPerField);
+						}
+						else if (Key.Key >= ConsoleKey.F1 && Key.Key <= ConsoleKey.F5)
+						{
+							DisplayMode = Key.Key - ConsoleKey.F1 + 1;
 							ShowMenu(DisplayMode, RowPerField);
 						}
 						else
@@ -701,9 +707,46 @@ namespace Display
 			return SensorData;
 		}
 
-		private static void InteroperableConfidentialDataReceived(byte[] Data, EllipticCurve Cipher, byte[] RemotePublicKey, 
+		private static void InteroperableConfidentialDataReceived(byte[] Data, EllipticCurve Cipher, byte[] RemotePublicKey,
 			Dictionary<string, int> RowPerField)
 		{
+			int c = Data.Length;
+			if (c <= 32)
+				return;
+
+			byte[] Key = Cipher.GetSharedKey(RemotePublicKey, Hashes.ComputeSHA256Hash);
+			byte[] Nonce = new byte[16];
+			byte[] IV = new byte[16];
+			byte[] Encrypted = new byte[c - 32];
+
+			Array.Copy(Data, 0, IV, 0, 16);
+			Array.Copy(Data, 16, Nonce, 0, 16);
+			Array.Copy(Data, 32, Encrypted, 0, c - 32);
+
+			using Aes Aes = Aes.Create();
+			Aes.BlockSize = 128;
+			Aes.KeySize = 256;
+			Aes.Mode = CipherMode.CBC;
+			Aes.Padding = PaddingMode.PKCS7;
+
+			byte[] Decrypted;
+
+			try
+			{
+				using ICryptoTransform Decryptor = Aes.CreateDecryptor(Key, IV);
+				Decrypted = Decryptor.TransformFinalBlock(Encrypted, 0, Encrypted.Length);
+			}
+			catch
+			{
+				return;
+			}
+
+			SensorData SensorData = ParseSignedSensorData(Decrypted, Cipher, RemotePublicKey);
+			if (SensorData is null)
+				return;
+
+			foreach (Field Field in SensorData.Fields)
+				PrintField(Field.Name, Field.ValueString, RowPerField);
 		}
 
 		#endregion

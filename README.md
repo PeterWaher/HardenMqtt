@@ -1,8 +1,28 @@
 Harden MQTT
 ================
 
-This project is aimed at professors teaching and students learning IoT communication over MQTT, and how to harden their 
-implementations so they avoid most common mistakes and vulnerabilities when using MQTT.
+This project is aimed at students learning IoT communication over MQTT, as well as teachers, and how to harden their 
+implementations so they avoid most common mistakes and vulnerabilities when using MQTT. It shows how to use MQTT to transmit
+sensor data in the following ways:
+
+* Unsecured
+	1. Unstructured
+	2. Structured
+	3. Interoperable
+* Secured
+	4. Cryptographically Signed & public
+	5. Signed and encrypted
+
+Signatures are based on public key cryptography, where public keys are transmitted over MQTT as well, and private keys are used
+to sign information being published. The Twister Edwards Curve `Ed25519` is used in these examples.
+
+For encryption to be done, a hybrid cipher is used, where the asymetric ciphers (`Ed25519`) are used to derive shared secrets, 
+are then used by a symmetric cipher (`AES-256`). As these shared secrets are never transmitted, thety can be used to securely 
+to encrypt the content being communicated. 
+
+To achieve this level of encryption, pairing of devices and sensors have to be performed. This is also done publicly, but
+securely over MQTT, highlighting the fact that malicious users can hijack the pairing process as well, if able to. Public key
+cryptography and signatures are vital for the pairing process to be secured.
 
 Projects
 ---------
