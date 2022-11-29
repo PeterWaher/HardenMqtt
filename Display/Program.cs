@@ -305,6 +305,7 @@ namespace Display
 
 				Log.Informational("Display application started... Press CTRL+C to terminate the application.", DeviceID);
 
+				Dictionary<string, int> RowPerField = new Dictionary<string, int>();
 				DateTime Last = DateTime.MinValue;
 				DateTime Current;
 				int DisplayMode = 1;
@@ -321,7 +322,7 @@ namespace Display
 						if (Key.KeyChar >= '1' && Key.KeyChar <= '5')
 						{
 							DisplayMode = Key.KeyChar - '0';
-							ShowMenu(DisplayMode);
+							ShowMenu(DisplayMode, RowPerField);
 						}
 						else
 							Console.Beep();
@@ -339,7 +340,7 @@ namespace Display
 						{
 							Current = DateTime.Now;
 							if (Current.Subtract(Last).TotalSeconds > 5)
-								ShowMenu(DisplayMode);
+								ShowMenu(DisplayMode, RowPerField);
 
 							Last = Current;
 
@@ -351,17 +352,17 @@ namespace Display
 									{
 										case "Unstructured":        // Unstructured reception (unsecured)
 											if (DisplayMode == 1)
-												UnstructuredDataReceived(e.Topic, e.Data);
+												UnstructuredDataReceived(e.Topic, e.Data, RowPerField);
 											break;
 
 										case "Structured":          // Structured reception (unsecured)
 											if (DisplayMode == 2)
-												StructuredDataReceived(e.Data);
+												StructuredDataReceived(e.Data, RowPerField);
 											break;
 
 										case "Interoperable":       // Interoperable reception (unsecured)
 											if (DisplayMode == 3)
-												InteroperableDataReceived(e.Data);
+												InteroperableDataReceived(e.Data, RowPerField);
 											break;
 									}
 								}
@@ -374,12 +375,12 @@ namespace Display
 									{
 										case "Public":              // Interoperable, signed, public reception (secured)
 											if (DisplayMode == 4)
-												InteroperableSignedPublicDataReceived(e.Data);
+												InteroperableSignedPublicDataReceived(e.Data, RowPerField);
 											break;
 
 										case "Confidential":        // Interoperable, signed, confidential reception (secured)
 											if (DisplayMode == 5)
-												InteroperableConfidentialDataReceived(e.Data);
+												InteroperableConfidentialDataReceived(e.Data, RowPerField);
 											break;
 									}
 								}
@@ -509,9 +510,10 @@ namespace Display
 
 		#region Data Presentation
 
-		private static void ShowMenu(int DisplayMode)
+		private static void ShowMenu(int DisplayMode, Dictionary<string, int> RowPerField)
 		{
 			Console.Clear();
+			RowPerField.Clear();
 
 			Print("1. Unstructured", 20, DisplayMode == 1, TextAlignment.Left);
 			Print("2. Structured", 20, DisplayMode == 2, TextAlignment.Left);
@@ -569,21 +571,42 @@ namespace Display
 			}
 		}
 
-		private static void UnstructuredDataReceived(string Topic, byte[] Data)
+		private static void PrintField(string Key, string Value, Dictionary<string, int> RowPerField)
+		{
+			if (RowPerField.TryGetValue(Key, out int Row))
+			{
+				int RowBak = Console.CursorTop;
+
+				Console.CursorTop = Row;
+				Console.CursorLeft = 0;
+
+				Print(Key, 25, ConsoleColor.White, ConsoleColor.Black, TextAlignment.Left);
+				Print(Value, 50, ConsoleColor.White, ConsoleColor.DarkGray, TextAlignment.Right);
+
+				Console.CursorTop = RowBak;
+				Console.CursorLeft = 0;
+			}
+			else
+			{
+				RowPerField[Key] = Console.CursorTop;
+
+				Print(Key, 25, ConsoleColor.White, ConsoleColor.Black, TextAlignment.Left);
+				Print(Value, 50, ConsoleColor.White, ConsoleColor.DarkGray, TextAlignment.Right);
+		
+				Console.Out.WriteLine();
+			}
+		}
+
+		private static void UnstructuredDataReceived(string Topic, byte[] Data, Dictionary<string, int> RowPerField)
 		{
 			int i = Topic.LastIndexOf('/');
 			if (i > 0)
 				Topic = Topic[(i + 1)..];
 
-			string Value = Encoding.UTF8.GetString(Data);
-
-			Print(Topic, 25, ConsoleColor.White, ConsoleColor.Black, TextAlignment.Left);
-			Print(Value, 50, ConsoleColor.White, ConsoleColor.DarkGray, TextAlignment.Right);
-
-			Console.Out.WriteLine();
+			PrintField(Topic, Encoding.UTF8.GetString(Data), RowPerField);
 		}
 
-		private static void StructuredDataReceived(byte[] Data)
+		private static void StructuredDataReceived(byte[] Data, Dictionary<string, int> RowPerField)
 		{
 			if (Data.Length > 65536)
 				return;
@@ -592,16 +615,11 @@ namespace Display
 			if (JSON.Parse(Json) is Dictionary<string, object> Parsed)
 			{
 				foreach (KeyValuePair<string, object> P in Parsed)
-				{
-					Print(P.Key, 25, ConsoleColor.White, ConsoleColor.Black, TextAlignment.Left);
-					Print(P.Value?.ToString(), 50, ConsoleColor.White, ConsoleColor.DarkGray, TextAlignment.Right);
-
-					Console.Out.WriteLine();
-				}
+					PrintField(P.Key, P.Value?.ToString(), RowPerField);
 			}
 		}
 
-		private static void InteroperableDataReceived(byte[] Data)
+		private static void InteroperableDataReceived(byte[] Data, Dictionary<string, int> RowPerField)
 		{
 			if (Data.Length > 65536)
 				return;
@@ -615,20 +633,15 @@ namespace Display
 			if (!(SensorData.Fields is null))
 			{
 				foreach (Field Field in SensorData.Fields)
-				{
-					Print(Field.Name, 25, ConsoleColor.White, ConsoleColor.Black, TextAlignment.Left);
-					Print(Field.ValueString, 50, ConsoleColor.White, ConsoleColor.DarkGray, TextAlignment.Right);
-
-					Console.Out.WriteLine();
-				}
+					PrintField(Field.Name, Field.ValueString, RowPerField);
 			}
 		}
 
-		private static void InteroperableSignedPublicDataReceived(byte[] Data)
+		private static void InteroperableSignedPublicDataReceived(byte[] Data, Dictionary<string, int> RowPerField)
 		{
 		}
 
-		private static void InteroperableConfidentialDataReceived(byte[] Data)
+		private static void InteroperableConfidentialDataReceived(byte[] Data, Dictionary<string, int> RowPerField)
 		{
 		}
 
