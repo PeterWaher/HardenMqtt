@@ -28,6 +28,9 @@ namespace Display
 	/// This project implements a simple display that gets its values from information published via an MQTT Broker. 
 	/// Information can be received in five different ways: Unstructured, Structured, Interoperable (first three unsecured), 
 	/// and public, Confidential (last two secured).
+	/// 
+	/// Note: Most of the program is written in linear fashion, so the reader can read as much as possible, from top to bottom, 
+	/// without having to scroll or switch files.
 	/// </summary>
 	internal class Program
 	{
@@ -430,8 +433,6 @@ namespace Display
 							Log.Critical(ex);
 						}
 					}
-
-					await Task.Delay(100);
 				}
 
 				#endregion
