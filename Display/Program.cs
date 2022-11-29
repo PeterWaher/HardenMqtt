@@ -1,24 +1,25 @@
-﻿using System;
+﻿using Pairing;
+using System;
+using System.Collections.Generic;
+using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
+using System.Xml;
+using Waher.Content;
 using Waher.Events;
 using Waher.Events.Console;
 using Waher.Events.MQTT;
 using Waher.Networking.MQTT;
+using Waher.Networking.XMPP.Sensor;
 using Waher.Persistence;
 using Waher.Persistence.Files;
-using Waher.Runtime.Inventory.Loader;
 using Waher.Runtime.Inventory;
+using Waher.Runtime.Inventory.Loader;
+using Waher.Runtime.Queue;
 using Waher.Runtime.Settings;
 using Waher.Security.EllipticCurves;
-using Waher.Content;
-using Pairing;
-using System.Security.Cryptography;
-using System.Threading;
-using Waher.Runtime.Queue;
-using Waher.Script.Constants;
-using System.Collections.Generic;
-using Waher.Script.Units.DerivedQuantities;
+using Waher.Things.SensorData;
 
 namespace Display
 {
@@ -576,8 +577,8 @@ namespace Display
 
 			string Value = Encoding.UTF8.GetString(Data);
 
-			Print(Topic, 30, TextAlignment.Left);
-			Print(Value, 30, TextAlignment.Right);
+			Print(Topic, 25, ConsoleColor.White, ConsoleColor.Black, TextAlignment.Left);
+			Print(Value, 50, ConsoleColor.White, ConsoleColor.DarkGray, TextAlignment.Right);
 
 			Console.Out.WriteLine();
 		}
@@ -592,8 +593,8 @@ namespace Display
 			{
 				foreach (KeyValuePair<string, object> P in Parsed)
 				{
-					Print(P.Key, 30, TextAlignment.Left);
-					Print(P.Value?.ToString(), 30, TextAlignment.Right);
+					Print(P.Key, 25, ConsoleColor.White, ConsoleColor.Black, TextAlignment.Left);
+					Print(P.Value?.ToString(), 50, ConsoleColor.White, ConsoleColor.DarkGray, TextAlignment.Right);
 
 					Console.Out.WriteLine();
 				}
@@ -602,6 +603,25 @@ namespace Display
 
 		private static void InteroperableDataReceived(byte[] Data)
 		{
+			if (Data.Length > 65536)
+				return;
+
+			string Xml = Encoding.UTF8.GetString(Data);
+			XmlDocument Doc = new XmlDocument();
+			Doc.LoadXml(Xml);
+
+			SensorData SensorData = SensorClient.ParseFields(Doc.DocumentElement);
+
+			if (!(SensorData.Fields is null))
+			{
+				foreach (Field Field in SensorData.Fields)
+				{
+					Print(Field.Name, 25, ConsoleColor.White, ConsoleColor.Black, TextAlignment.Left);
+					Print(Field.ValueString, 50, ConsoleColor.White, ConsoleColor.DarkGray, TextAlignment.Right);
+
+					Console.Out.WriteLine();
+				}
+			}
 		}
 
 		private static void InteroperableSignedPublicDataReceived(byte[] Data)
