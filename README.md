@@ -6,12 +6,12 @@ implementations so they avoid most common mistakes and vulnerabilities when usin
 sensor data in the following ways:
 
 * Unsecured
-	1. Unstructured
-	2. Structured
-	3. Interoperable
+	* Unstructured
+	* Structured
+	* Interoperable
 * Secured
-	4. Cryptographically Signed & public
-	5. Signed and encrypted
+	* Cryptographically Signed & public
+	* Signed and encrypted
 
 Signatures are based on public key cryptography, where public keys are transmitted over MQTT as well, and private keys are used
 to sign information being published. The Twister Edwards Curve `Ed25519` is used in these examples.
