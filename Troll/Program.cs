@@ -1,26 +1,24 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
-using Waher.Events.Console;
+using System.Xml;
+using Waher.Content;
+using Waher.Content.Xml;
 using Waher.Events;
+using Waher.Events.Console;
+using Waher.Events.MQTT;
 using Waher.Networking.MQTT;
 using Waher.Persistence;
 using Waher.Persistence.Files;
-using Waher.Runtime.Inventory.Loader;
-using Waher.Runtime.Inventory;
-using Waher.Runtime.Settings;
-using System.Threading;
-using Waher.Events.MQTT;
-using Waher.Runtime.Queue;
-using Waher.Content;
-using System.Collections.Generic;
-using System.ComponentModel.Design;
-using System.Xml;
-using Waher.Content.Xml;
 using Waher.Runtime.Cache;
+using Waher.Runtime.Inventory;
+using Waher.Runtime.Inventory.Loader;
+using Waher.Runtime.Queue;
+using Waher.Runtime.Settings;
 using Waher.Security;
-using Microsoft.CodeAnalysis;
-using Waher.Script.Constants;
 
 namespace Troll
 {
@@ -45,7 +43,6 @@ namespace Troll
 
 			try
 			{
-
 				#region Setup
 
 				// First, initialize environment and type inventory. This creates an inventory of types used by the application.
@@ -91,8 +88,6 @@ namespace Troll
 
 				// Configuring and connecting to MQTT Server
 
-				bool MqttConnected = false;
-
 				do
 				{
 					// MQTT Configuration
@@ -122,12 +117,6 @@ namespace Troll
 
 						MqttPassword = UserInput("MQTT Password", MqttPassword);
 						await RuntimeSettings.SetAsync("MQTT.Password", MqttPassword);
-					}
-
-					if (!(Mqtt is null))
-					{
-						await Mqtt.DisposeAsync();
-						Mqtt = null;
 					}
 
 					// Connecting to broker and waiting for connection to complete
@@ -170,9 +159,13 @@ namespace Troll
 						return Task.CompletedTask;
 					};
 
-					MqttConnected = await WaitForConnect.Task;
+					if (!await WaitForConnect.Task)
+					{
+						await Mqtt.DisposeAsync();
+						Mqtt = null;
+					}
 				}
-				while (!MqttConnected);
+				while (Mqtt is null);
 
 				#endregion
 
@@ -228,7 +221,11 @@ namespace Troll
 					{
 						string Digest = ComputeHash(e.Topic, e.Data);
 						if (recentlySent.ContainsKey(Digest))
+						{
+							Console.Out.Write(' ');
+							recentlySent.Remove(Digest);
 							continue;
+						}
 
 						if (e.Data.Length > 65536)
 							await TrollBlob(Mqtt, e.Topic, e.Data);
@@ -460,42 +457,42 @@ namespace Troll
 		{
 			int c = Data.Length;
 
-			switch (rnd.Next(6))
+			switch (RandomInt(4))
 			{
 				case 0: // Half size
-					Array.Resize<byte>(ref Data, c / 2);
-					await Publish(Mqtt, Topic, Data);
+					Array.Resize(ref Data, c / 2);
+					await Publish(Mqtt, Topic, Data, true, 'h');
 					break;
 
 				case 1: // Double size
-					Array.Resize<byte>(ref Data, c * 2);
+					Array.Resize(ref Data, c * 2);
 					Array.Copy(Data, 0, Data, c, c);
-					await Publish(Mqtt, Topic, Data);
+					await Publish(Mqtt, Topic, Data, true, 'd');
 					break;
 
 				case 2: // Randomize
-					rnd.NextBytes(Data);
-					await Publish(Mqtt, Topic, Data);
+					RandomBytes(Data);
+					await Publish(Mqtt, Topic, Data, true, 'r');
 					break;
 
-				case 3: // 1 MB
-					Data = new byte[1024 * 1024];
-					rnd.NextBytes(Data);
-					await Publish(Mqtt, Topic, Data);
-					break;
-
-				case 4: // 16 MB
-					Data = new byte[16 * 1024 * 1024];
-					rnd.NextBytes(Data);
-					await Publish(Mqtt, Topic, Data);
-					break;
-
-				case 5: // 192 MB
-					Data = new byte[192 * 1024 * 1024];
-					rnd.NextBytes(Data);
-					await Publish(Mqtt, Topic, Data);
+				case 3: // Large BLOB
+					await PublishRandomBlob(Mqtt, Topic);
 					break;
 			}
+		}
+
+		private static async Task PublishRandomBlob(MqttClient Mqtt, string Topic)
+		{
+			ulong i = RandomInt(1000);
+
+			if (i < 5000)
+				await Publish(Mqtt, Topic, RandomBytes(1024), true, 'k');
+			else if (i < 9900)
+				await Publish(Mqtt, Topic, RandomBytes(1024 * 1024), false, 'M');			// Play nice. Retaining will create a lot of data to download during initial subscription.
+			else if (i < 9990)
+				await Publish(Mqtt, Topic, RandomBytes(16 * 1024 * 1024), false, 'H');      // Play nice. Retaining will create a lot of data to download during initial subscription.
+			else
+				await Publish(Mqtt, Topic, RandomBytes(192 * 1024 * 1024), false, 'G');     // Play nice. Retaining will create a lot of data to download during initial subscription.
 		}
 
 		/// <summary>
@@ -506,114 +503,108 @@ namespace Troll
 		/// <param name="i">Integer received on topic.</param>
 		private static async Task TrollInteger(MqttClient Mqtt, string Topic, long i)
 		{
-			switch (rnd.Next(6))
+			switch (RandomInt(6))
 			{
 				case 0: // Half
-					await Publish(Mqtt, Topic, (i / 2).ToString());
+					await Publish(Mqtt, Topic, (i / 2).ToString(), 'h');
 					break;
 
 				case 1: // Double
-					await Publish(Mqtt, Topic, (i * 2).ToString());
+					await Publish(Mqtt, Topic, (i * 2).ToString(), 'd');
 					break;
 
 				case 2: // Negate
-					await Publish(Mqtt, Topic, (-i).ToString());
+					await Publish(Mqtt, Topic, (-i).ToString(), 'n');
 					break;
 
 				case 3: // Randomize
-					await Publish(Mqtt, Topic, rnd.Next().ToString());
+					await Publish(Mqtt, Topic, RandomInt().ToString(), 'r');
 					break;
 
 				case 4: // String
-					await Publish(Mqtt, Topic, "Kilroy was here");
+					await Publish(Mqtt, Topic, "Kilroy was here", 's');
 					break;
 
-				case 5: // 1 MB
-					byte[] Data = new byte[1024 * 1024];
-					rnd.NextBytes(Data);
-					await Publish(Mqtt, Topic, Data);
+				case 5: // Large BLOB
+					await PublishRandomBlob(Mqtt, Topic);
 					break;
 			}
 		}
 
 		private static async Task TrollDouble(MqttClient Mqtt, string Topic, double d)
 		{
-			switch (rnd.Next(7))
+			switch (RandomInt(7))
 			{
 				case 0: // Half
-					await Publish(Mqtt, Topic, CommonTypes.Encode(d / 2));
+					await Publish(Mqtt, Topic, CommonTypes.Encode(d / 2), 'h');
 					break;
 
 				case 1: // Double
-					await Publish(Mqtt, Topic, CommonTypes.Encode(d * 2));
+					await Publish(Mqtt, Topic, CommonTypes.Encode(d * 2), 'd');
 					break;
 
 				case 2: // Negate
-					await Publish(Mqtt, Topic, CommonTypes.Encode(-d));
+					await Publish(Mqtt, Topic, CommonTypes.Encode(-d), 'n');
 					break;
 
 				case 3: // Randomize
-					await Publish(Mqtt, Topic, CommonTypes.Encode(2 * d * rnd.NextDouble()));
+					await Publish(Mqtt, Topic, CommonTypes.Encode(2 * d * RandomDouble(1)), 'r');
 					break;
 
 				case 4: // Change format
-					await Publish(Mqtt, Topic, d.ToString());
+					await Publish(Mqtt, Topic, d.ToString(), 'f');
 					break;
 
 				case 5: // String
-					await Publish(Mqtt, Topic, "Kilroy was here");
+					await Publish(Mqtt, Topic, "Kilroy was here", 's');
 					break;
 
-				case 6: // 1 MB
-					byte[] Data = new byte[1024 * 1024];
-					rnd.NextBytes(Data);
-					await Publish(Mqtt, Topic, Data);
+				case 6: // Large BLOB
+					await PublishRandomBlob(Mqtt, Topic);
 					break;
 			}
 		}
 
 		private static async Task TrollTimeSpan(MqttClient Mqtt, string Topic, TimeSpan TS)
 		{
-			switch (rnd.Next(6))
+			switch (RandomInt(6))
 			{
 				case 0: // Half
-					await Publish(Mqtt, Topic, TimeSpan.FromTicks(TS.Ticks / 2).ToString());
+					await Publish(Mqtt, Topic, TimeSpan.FromTicks(TS.Ticks / 2).ToString(), 'h');
 					break;
 
 				case 1: // Double
-					await Publish(Mqtt, Topic, TimeSpan.FromTicks(TS.Ticks * 2).ToString());
+					await Publish(Mqtt, Topic, TimeSpan.FromTicks(TS.Ticks * 2).ToString(), 'd');
 					break;
 
 				case 2: // Negate
-					await Publish(Mqtt, Topic, (-TS).ToString());
+					await Publish(Mqtt, Topic, (-TS).ToString(), 'n');
 					break;
 
 				case 3: // Randomize
-					await Publish(Mqtt, Topic, TimeSpan.FromTicks((long)(2 * TS.Ticks * rnd.NextDouble())).ToString());
+					await Publish(Mqtt, Topic, TimeSpan.FromTicks((long)(2 * TS.Ticks * RandomDouble(1))).ToString(), 'r');
 					break;
 
 				case 4: // String
-					await Publish(Mqtt, Topic, "Kilroy was here");
+					await Publish(Mqtt, Topic, "Kilroy was here", 's');
 					break;
 
-				case 5: // 1 MB
-					byte[] Data = new byte[1024 * 1024];
-					rnd.NextBytes(Data);
-					await Publish(Mqtt, Topic, Data);
+				case 5: // Large BLOB
+					await PublishRandomBlob(Mqtt, Topic);
 					break;
 			}
 		}
 
 		private static async Task TrollDateTime(MqttClient Mqtt, string Topic, DateTime TP)
 		{
-			switch (rnd.Next(11))
+			switch (RandomInt(11))
 			{
 				case 0: // Half
-					await Publish(Mqtt, Topic, XML.Encode(new DateTime(TP.Ticks / 2).ToString()));
+					await Publish(Mqtt, Topic, XML.Encode(new DateTime(TP.Ticks / 2).ToString()), 'h');
 					break;
 
 				case 1: // Double
-					await Publish(Mqtt, Topic, XML.Encode(new DateTime(TP.Ticks * 2).ToString()));
+					await Publish(Mqtt, Topic, XML.Encode(new DateTime(TP.Ticks * 2).ToString()), 'd');
 					break;
 
 				case 2: // Invalid year
@@ -623,7 +614,7 @@ namespace Troll
 						TP.Day.ToString("D2") + "T" +
 						TP.Hour.ToString("D2") + ":" +
 						TP.Minute.ToString("D2") + ":" +
-						TP.Second.ToString("D2"));
+						TP.Second.ToString("D2"), 'y');
 					break;
 
 				case 3: // Invalid month
@@ -633,7 +624,7 @@ namespace Troll
 						TP.Day.ToString("D2") + "T" +
 						TP.Hour.ToString("D2") + ":" +
 						TP.Minute.ToString("D2") + ":" +
-						TP.Second.ToString("D2"));
+						TP.Second.ToString("D2"), 'm');
 					break;
 
 				case 4: // Invalid day
@@ -643,7 +634,7 @@ namespace Troll
 						(TP.Day + 10).ToString("D2") + "T" +
 						TP.Hour.ToString("D2") + ":" +
 						TP.Minute.ToString("D2") + ":" +
-						TP.Second.ToString("D2"));
+						TP.Second.ToString("D2"), 'D');
 					break;
 
 				case 5: // Invalid hour
@@ -653,7 +644,7 @@ namespace Troll
 						TP.Day.ToString("D2") + "T" +
 						(TP.Hour + 10).ToString("D2") + ":" +
 						TP.Minute.ToString("D2") + ":" +
-						TP.Second.ToString("D2"));
+						TP.Second.ToString("D2"), 't');
 					break;
 
 				case 6: // Invalid minute
@@ -663,7 +654,7 @@ namespace Troll
 						TP.Day.ToString("D2") + "T" +
 						TP.Hour.ToString("D2") + ":" +
 						(TP.Minute + 10).ToString("D2") + ":" +
-						TP.Second.ToString("D2"));
+						TP.Second.ToString("D2"), 'i');
 					break;
 
 				case 7: // Invalid second
@@ -673,21 +664,19 @@ namespace Troll
 						TP.Day.ToString("D2") + "T" +
 						TP.Hour.ToString("D2") + ":" +
 						TP.Minute.ToString("D2") + ":" +
-						(TP.Second + 10).ToString("D2"));
+						(TP.Second + 10).ToString("D2"), 'S');
 					break;
 
 				case 8: // Randomize
-					await Publish(Mqtt, Topic, XML.Encode(new DateTime((long)(2 * TP.Ticks * rnd.NextDouble()))));
+					await Publish(Mqtt, Topic, XML.Encode(new DateTime((long)(2 * TP.Ticks * RandomDouble(1)))), 'r');
 					break;
 
 				case 9: // String
-					await Publish(Mqtt, Topic, "Kilroy was here");
+					await Publish(Mqtt, Topic, "Kilroy was here", 's');
 					break;
 
-				case 10: // 1 MB
-					byte[] Data = new byte[1024 * 1024];
-					rnd.NextBytes(Data);
-					await Publish(Mqtt, Topic, Data);
+				case 10: // Large BLOB
+					await PublishRandomBlob(Mqtt, Topic);
 					break;
 			}
 		}
@@ -696,10 +685,10 @@ namespace Troll
 		{
 			int c = Link.OriginalString.Length;
 
-			switch (rnd.Next(6))
+			switch (RandomInt(6))
 			{
 				case 0: // Half
-					await Publish(Mqtt, Topic, Link.OriginalString[0..(c / 2)]);
+					await Publish(Mqtt, Topic, Link.OriginalString[0..(c / 2)], 'h');
 					break;
 
 				case 1: // Change scheme
@@ -708,7 +697,7 @@ namespace Troll
 						Scheme = Link.Scheme + "x"
 					};
 
-					await Publish(Mqtt, Topic, b.Uri.ToString());
+					await Publish(Mqtt, Topic, b.Uri.ToString(), 'x');
 					break;
 
 				case 2: // Change domain
@@ -717,7 +706,7 @@ namespace Troll
 						Host = "example.com"
 					};
 
-					await Publish(Mqtt, Topic, b.Uri.ToString());
+					await Publish(Mqtt, Topic, b.Uri.ToString(), 'N');
 					break;
 
 				case 3: // Modify URL
@@ -726,17 +715,15 @@ namespace Troll
 						Path = Link.LocalPath + "/Kilroy"
 					};
 
-					await Publish(Mqtt, Topic, b.Uri.ToString());
+					await Publish(Mqtt, Topic, b.Uri.ToString(), 'u');
 					break;
 
 				case 4: // String
-					await Publish(Mqtt, Topic, "Kilroy was here");
+					await Publish(Mqtt, Topic, "Kilroy was here", 's');
 					break;
 
-				case 5: // 1 MB
-					byte[] Data = new byte[1024 * 1024];
-					rnd.NextBytes(Data);
-					await Publish(Mqtt, Topic, Data);
+				case 5: // Large BLOB
+					await PublishRandomBlob(Mqtt, Topic);
 					break;
 			}
 		}
@@ -745,95 +732,94 @@ namespace Troll
 		{
 			int c = s.Length;
 
-			switch (rnd.Next(5))
+			switch (RandomInt(4))
 			{
 				case 0: // Half
-					await Publish(Mqtt, Topic, s[0..(c / 2)]);
+					await Publish(Mqtt, Topic, s[0..(c / 2)], 'h');
 					break;
 
 				case 1: // Double
-					await Publish(Mqtt, Topic, s + s);
+					await Publish(Mqtt, Topic, s + s, 'd');
 					break;
 
 				case 2: // String
-					await Publish(Mqtt, Topic, "Kilroy was here");
+					await Publish(Mqtt, Topic, "Kilroy was here", 's');
 					break;
 
-				case 3: // 1 kB
-					byte[] Data = new byte[1024];
-					rnd.NextBytes(Data);
-					await Publish(Mqtt, Topic, Data);
-					break;
-
-				case 4: // 1 MB
-					Data = new byte[1024 * 1024];
-					rnd.NextBytes(Data);
-					await Publish(Mqtt, Topic, Data);
+				case 3: // Large BLOB
+					await PublishRandomBlob(Mqtt, Topic);
 					break;
 			}
 		}
 
 		private static async Task TrollObject(MqttClient Mqtt, string Topic, Dictionary<string, object> Object)
 		{
-			Dictionary<string, object> Object2 = new Dictionary<string, object>();
+			ulong i = RandomInt(10);
 
-			foreach (KeyValuePair<string, object> P in Object)
+			if (i == 0)
+				await PublishRandomBlob(Mqtt, Topic);
+			else
 			{
-				int c = P.Key.Length;
+				Dictionary<string, object> Object2 = new Dictionary<string, object>();
 
-				switch (rnd.Next(5))
+				foreach (KeyValuePair<string, object> P in Object)
 				{
-					case 0: // Half key
-						Object2[P.Key[0..(c / 2)]] = P.Value;
-						break;
+					int c = P.Key.Length;
 
-					case 1: // Double key
-						Object2[P.Key + P.Key] = P.Value;
-						break;
+					switch (RandomInt(5))
+					{
+						case 0: // Half key
+							Object2[P.Key[0..(c / 2)]] = P.Value;
+							break;
 
-					case 2: // Random key
-						byte[] Data = new byte[16];
-						rnd.NextBytes(Data);
-						Object2[Base64Url.Encode(Data)] = P.Value;
-						break;
+						case 1: // Double key
+							Object2[P.Key + P.Key] = P.Value;
+							break;
 
-					case 3: // Ignore key
-						break;
+						case 2: // Random key
+							Object2[Base64Url.Encode(RandomBytes(16))] = P.Value;
+							break;
 
-					case 4:
-						Object2[P.Key] = TrollValue(P.Value);
-						break;
+						case 3: // Ignore key
+							break;
+
+						case 4:
+							Object2[P.Key] = TrollValue(P.Value);
+							break;
+					}
 				}
-			}
 
-			await Publish(Mqtt, Topic, JSON.Encode(Object2, false));
+				await Publish(Mqtt, Topic, JSON.Encode(Object2, false), 'o');
+			}
 		}
 
 		private static async Task TrollArray(MqttClient Mqtt, string Topic, Array Array)
 		{
+			// TODO
 		}
 
 		private static async Task TrollXml(MqttClient Mqtt, string Topic, XmlDocument Xml)
 		{
+			// TODO
 		}
 
 		private static object TrollValue(object Value)
 		{
-			return Value;	// TODO
+			return Value;   // TODO
 		}
 
-		private static async Task Publish(MqttClient Mqtt, string Topic, string Data)
+		private static async Task Publish(MqttClient Mqtt, string Topic, string Data, char Type)
 		{
-			await Publish(Mqtt, Topic, Encoding.UTF8.GetBytes(Data));
+			await Publish(Mqtt, Topic, Encoding.UTF8.GetBytes(Data), true, Type);
 		}
 
-		private static async Task Publish(MqttClient Mqtt, string Topic, byte[] Data)
+		private static async Task Publish(MqttClient Mqtt, string Topic, byte[] Data, bool Retain, char Type)
 		{
 			string Digest = ComputeHash(Topic, Data);
 			recentlySent[Digest] = true;
 
-			await Mqtt.PUBLISH(Topic, MqttQualityOfService.AtMostOnce, true, Data);
-			Console.Out.Write('.');
+			Console.Out.Write(Type);
+			await Mqtt.PUBLISH(Topic, MqttQualityOfService.AtMostOnce, Retain, Data);
 		}
 
 		private static string ComputeHash(string Topic, byte[] Data)
@@ -849,8 +835,69 @@ namespace Troll
 			return Hashes.ComputeSHA256HashString(Data2);
 		}
 
-		private static readonly Random rnd = new Random();
 		private static readonly Cache<string, bool> recentlySent = new Cache<string, bool>(int.MaxValue, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
+
+		#endregion
+
+		#region Randomness
+
+		private static readonly RandomNumberGenerator rnd = RandomNumberGenerator.Create();
+
+		/// <summary>
+		/// Generates a random integer in [0,MaxExclusive).
+		/// </summary>
+		/// <param name="MaxExclusive">Maximum number (not included in the result).</param>
+		/// <returns>Random number in [0,MaxExclusive).</returns>
+		private static ulong RandomInt()
+		{
+			byte[] b = new byte[8];
+			rnd.GetBytes(b);
+			return BitConverter.ToUInt64(b);
+		}
+
+		/// <summary>
+		/// Generates a random integer in [0,MaxExclusive).
+		/// </summary>
+		/// <param name="MaxExclusive">Maximum number (not included in the result).</param>
+		/// <returns>Random number in [0,MaxExclusive).</returns>
+		private static ulong RandomInt(ulong MaxExclusive)
+		{
+			return RandomInt() % MaxExclusive;
+		}
+
+		/// <summary>
+		/// Generates a random double number in [0,MaxInclusive].
+		/// </summary>
+		/// <param name="MaxInclusive">Maximum number, included in the result.</param>
+		/// <returns>Random number in [0,MaxInclusive].</returns>
+		private static double RandomDouble(double MaxInclusive)
+		{
+			byte[] b = new byte[8];
+			rnd.GetBytes(b);
+			ulong l = BitConverter.ToUInt64(b);
+			return (((double)l) / ulong.MaxValue) * MaxInclusive;
+		}
+
+		/// <summary>
+		/// Generates random bytes.
+		/// </summary>
+		/// <param name="Data">Buffer that will receive the random bytes.</param>
+		private static void RandomBytes(byte[] Data)
+		{
+			rnd.GetBytes(Data);
+		}
+
+		/// <summary>
+		/// Generates random bytes.
+		/// </summary>
+		/// <param name="Size">Number of bytes to generate.</param>
+		/// <returns>Random bytes.</returns>
+		private static byte[] RandomBytes(int Size)
+		{
+			byte[] Data = new byte[Size];
+			rnd.GetBytes(Data);
+			return Data;
+		}
 
 		#endregion
 
