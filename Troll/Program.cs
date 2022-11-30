@@ -19,6 +19,8 @@ using System.Xml;
 using Waher.Content.Xml;
 using Waher.Runtime.Cache;
 using Waher.Security;
+using Microsoft.CodeAnalysis;
+using Waher.Script.Constants;
 
 namespace Troll
 {
@@ -224,7 +226,7 @@ namespace Troll
 
 					try
 					{
-						string Digest = Hashes.ComputeSHA256HashString(e.Data);
+						string Digest = ComputeHash(e.Topic, e.Data);
 						if (recentlySent.ContainsKey(Digest))
 							continue;
 
@@ -242,14 +244,8 @@ namespace Troll
 								await TrollTimeSpan(Mqtt, e.Topic, TS);
 							else if (DateTime.TryParse(s, out DateTime TP))
 								await TrollDateTime(Mqtt, e.Topic, TP);
-							else if (DateTimeOffset.TryParse(s, out DateTimeOffset TPO))
-								await TrollDateTimeOffset(Mqtt, e.Topic, TPO);
-							else if (CommonTypes.TryParseRfc822(s, out TPO))
-								await TrollDateTimeOffset(Mqtt, e.Topic, TPO);
 							else if (XML.TryParse(s, out TP))
 								await TrollDateTime(Mqtt, e.Topic, TP);
-							else if (XML.TryParse(s, out TPO))
-								await TrollDateTimeOffset(Mqtt, e.Topic, TPO);
 							else if (Uri.TryCreate(s, UriKind.Absolute, out Uri Link))
 								await TrollUri(Mqtt, e.Topic, Link);
 							else if (TryParseJsonObject(s, out Dictionary<string, object> Object))
@@ -454,13 +450,19 @@ namespace Troll
 
 		#region Trolling
 
+		/// <summary>
+		/// Trolls recipients of BLOBs
+		/// </summary>
+		/// <param name="Mqtt">MQTT Client</param>
+		/// <param name="Topic">Topic</param>
+		/// <param name="Data">Data received on topic.</param>
 		private static async Task TrollBlob(MqttClient Mqtt, string Topic, byte[] Data)
 		{
 			int c = Data.Length;
 
 			switch (rnd.Next(6))
 			{
-				case 0:	// Half size
+				case 0: // Half size
 					Array.Resize<byte>(ref Data, c / 2);
 					await Publish(Mqtt, Topic, Data);
 					break;
@@ -496,36 +498,315 @@ namespace Troll
 			}
 		}
 
+		/// <summary>
+		/// Trolls recipients of integers
+		/// </summary>
+		/// <param name="Mqtt">MQTT Client</param>
+		/// <param name="Topic">Topic</param>
+		/// <param name="i">Integer received on topic.</param>
 		private static async Task TrollInteger(MqttClient Mqtt, string Topic, long i)
 		{
+			switch (rnd.Next(6))
+			{
+				case 0: // Half
+					await Publish(Mqtt, Topic, (i / 2).ToString());
+					break;
+
+				case 1: // Double
+					await Publish(Mqtt, Topic, (i * 2).ToString());
+					break;
+
+				case 2: // Negate
+					await Publish(Mqtt, Topic, (-i).ToString());
+					break;
+
+				case 3: // Randomize
+					await Publish(Mqtt, Topic, rnd.Next().ToString());
+					break;
+
+				case 4: // String
+					await Publish(Mqtt, Topic, "Kilroy was here");
+					break;
+
+				case 5: // 1 MB
+					byte[] Data = new byte[1024 * 1024];
+					rnd.NextBytes(Data);
+					await Publish(Mqtt, Topic, Data);
+					break;
+			}
 		}
 
 		private static async Task TrollDouble(MqttClient Mqtt, string Topic, double d)
 		{
+			switch (rnd.Next(7))
+			{
+				case 0: // Half
+					await Publish(Mqtt, Topic, CommonTypes.Encode(d / 2));
+					break;
+
+				case 1: // Double
+					await Publish(Mqtt, Topic, CommonTypes.Encode(d * 2));
+					break;
+
+				case 2: // Negate
+					await Publish(Mqtt, Topic, CommonTypes.Encode(-d));
+					break;
+
+				case 3: // Randomize
+					await Publish(Mqtt, Topic, CommonTypes.Encode(2 * d * rnd.NextDouble()));
+					break;
+
+				case 4: // Change format
+					await Publish(Mqtt, Topic, d.ToString());
+					break;
+
+				case 5: // String
+					await Publish(Mqtt, Topic, "Kilroy was here");
+					break;
+
+				case 6: // 1 MB
+					byte[] Data = new byte[1024 * 1024];
+					rnd.NextBytes(Data);
+					await Publish(Mqtt, Topic, Data);
+					break;
+			}
 		}
 
 		private static async Task TrollTimeSpan(MqttClient Mqtt, string Topic, TimeSpan TS)
 		{
+			switch (rnd.Next(6))
+			{
+				case 0: // Half
+					await Publish(Mqtt, Topic, TimeSpan.FromTicks(TS.Ticks / 2).ToString());
+					break;
+
+				case 1: // Double
+					await Publish(Mqtt, Topic, TimeSpan.FromTicks(TS.Ticks * 2).ToString());
+					break;
+
+				case 2: // Negate
+					await Publish(Mqtt, Topic, (-TS).ToString());
+					break;
+
+				case 3: // Randomize
+					await Publish(Mqtt, Topic, TimeSpan.FromTicks((long)(2 * TS.Ticks * rnd.NextDouble())).ToString());
+					break;
+
+				case 4: // String
+					await Publish(Mqtt, Topic, "Kilroy was here");
+					break;
+
+				case 5: // 1 MB
+					byte[] Data = new byte[1024 * 1024];
+					rnd.NextBytes(Data);
+					await Publish(Mqtt, Topic, Data);
+					break;
+			}
 		}
 
 		private static async Task TrollDateTime(MqttClient Mqtt, string Topic, DateTime TP)
 		{
-		}
+			switch (rnd.Next(11))
+			{
+				case 0: // Half
+					await Publish(Mqtt, Topic, XML.Encode(new DateTime(TP.Ticks / 2).ToString()));
+					break;
 
-		private static async Task TrollDateTimeOffset(MqttClient Mqtt, string Topic, DateTimeOffset TPO)
-		{
+				case 1: // Double
+					await Publish(Mqtt, Topic, XML.Encode(new DateTime(TP.Ticks * 2).ToString()));
+					break;
+
+				case 2: // Invalid year
+					await Publish(Mqtt, Topic,
+						(TP.Year + 10).ToString("D4") + "-" +
+						TP.Month.ToString("D2") + "-" +
+						TP.Day.ToString("D2") + "T" +
+						TP.Hour.ToString("D2") + ":" +
+						TP.Minute.ToString("D2") + ":" +
+						TP.Second.ToString("D2"));
+					break;
+
+				case 3: // Invalid month
+					await Publish(Mqtt, Topic,
+						TP.Year.ToString("D4") + "-" +
+						(TP.Month + 10).ToString("D2") + "-" +
+						TP.Day.ToString("D2") + "T" +
+						TP.Hour.ToString("D2") + ":" +
+						TP.Minute.ToString("D2") + ":" +
+						TP.Second.ToString("D2"));
+					break;
+
+				case 4: // Invalid day
+					await Publish(Mqtt, Topic,
+						TP.Year.ToString("D4") + "-" +
+						TP.Month.ToString("D2") + "-" +
+						(TP.Day + 10).ToString("D2") + "T" +
+						TP.Hour.ToString("D2") + ":" +
+						TP.Minute.ToString("D2") + ":" +
+						TP.Second.ToString("D2"));
+					break;
+
+				case 5: // Invalid hour
+					await Publish(Mqtt, Topic,
+						TP.Year.ToString("D4") + "-" +
+						TP.Month.ToString("D2") + "-" +
+						TP.Day.ToString("D2") + "T" +
+						(TP.Hour + 10).ToString("D2") + ":" +
+						TP.Minute.ToString("D2") + ":" +
+						TP.Second.ToString("D2"));
+					break;
+
+				case 6: // Invalid minute
+					await Publish(Mqtt, Topic,
+						TP.Year.ToString("D4") + "-" +
+						TP.Month.ToString("D2") + "-" +
+						TP.Day.ToString("D2") + "T" +
+						TP.Hour.ToString("D2") + ":" +
+						(TP.Minute + 10).ToString("D2") + ":" +
+						TP.Second.ToString("D2"));
+					break;
+
+				case 7: // Invalid second
+					await Publish(Mqtt, Topic,
+						TP.Year.ToString("D4") + "-" +
+						TP.Month.ToString("D2") + "-" +
+						TP.Day.ToString("D2") + "T" +
+						TP.Hour.ToString("D2") + ":" +
+						TP.Minute.ToString("D2") + ":" +
+						(TP.Second + 10).ToString("D2"));
+					break;
+
+				case 8: // Randomize
+					await Publish(Mqtt, Topic, XML.Encode(new DateTime((long)(2 * TP.Ticks * rnd.NextDouble()))));
+					break;
+
+				case 9: // String
+					await Publish(Mqtt, Topic, "Kilroy was here");
+					break;
+
+				case 10: // 1 MB
+					byte[] Data = new byte[1024 * 1024];
+					rnd.NextBytes(Data);
+					await Publish(Mqtt, Topic, Data);
+					break;
+			}
 		}
 
 		private static async Task TrollUri(MqttClient Mqtt, string Topic, Uri Link)
 		{
+			int c = Link.OriginalString.Length;
+
+			switch (rnd.Next(6))
+			{
+				case 0: // Half
+					await Publish(Mqtt, Topic, Link.OriginalString[0..(c / 2)]);
+					break;
+
+				case 1: // Change scheme
+					UriBuilder b = new UriBuilder(Link)
+					{
+						Scheme = Link.Scheme + "x"
+					};
+
+					await Publish(Mqtt, Topic, b.Uri.ToString());
+					break;
+
+				case 2: // Change domain
+					b = new UriBuilder(Link)
+					{
+						Host = "example.com"
+					};
+
+					await Publish(Mqtt, Topic, b.Uri.ToString());
+					break;
+
+				case 3: // Modify URL
+					b = new UriBuilder(Link)
+					{
+						Path = Link.LocalPath + "/Kilroy"
+					};
+
+					await Publish(Mqtt, Topic, b.Uri.ToString());
+					break;
+
+				case 4: // String
+					await Publish(Mqtt, Topic, "Kilroy was here");
+					break;
+
+				case 5: // 1 MB
+					byte[] Data = new byte[1024 * 1024];
+					rnd.NextBytes(Data);
+					await Publish(Mqtt, Topic, Data);
+					break;
+			}
 		}
 
 		private static async Task TrollString(MqttClient Mqtt, string Topic, string s)
 		{
+			int c = s.Length;
+
+			switch (rnd.Next(5))
+			{
+				case 0: // Half
+					await Publish(Mqtt, Topic, s[0..(c / 2)]);
+					break;
+
+				case 1: // Double
+					await Publish(Mqtt, Topic, s + s);
+					break;
+
+				case 2: // String
+					await Publish(Mqtt, Topic, "Kilroy was here");
+					break;
+
+				case 3: // 1 kB
+					byte[] Data = new byte[1024];
+					rnd.NextBytes(Data);
+					await Publish(Mqtt, Topic, Data);
+					break;
+
+				case 4: // 1 MB
+					Data = new byte[1024 * 1024];
+					rnd.NextBytes(Data);
+					await Publish(Mqtt, Topic, Data);
+					break;
+			}
 		}
 
 		private static async Task TrollObject(MqttClient Mqtt, string Topic, Dictionary<string, object> Object)
 		{
+			Dictionary<string, object> Object2 = new Dictionary<string, object>();
+
+			foreach (KeyValuePair<string, object> P in Object)
+			{
+				int c = P.Key.Length;
+
+				switch (rnd.Next(5))
+				{
+					case 0: // Half key
+						Object2[P.Key[0..(c / 2)]] = P.Value;
+						break;
+
+					case 1: // Double key
+						Object2[P.Key + P.Key] = P.Value;
+						break;
+
+					case 2: // Random key
+						byte[] Data = new byte[16];
+						rnd.NextBytes(Data);
+						Object2[Base64Url.Encode(Data)] = P.Value;
+						break;
+
+					case 3: // Ignore key
+						break;
+
+					case 4:
+						Object2[P.Key] = TrollValue(P.Value);
+						break;
+				}
+			}
+
+			await Publish(Mqtt, Topic, JSON.Encode(Object2, false));
 		}
 
 		private static async Task TrollArray(MqttClient Mqtt, string Topic, Array Array)
@@ -536,12 +817,36 @@ namespace Troll
 		{
 		}
 
+		private static object TrollValue(object Value)
+		{
+			return Value;	// TODO
+		}
+
+		private static async Task Publish(MqttClient Mqtt, string Topic, string Data)
+		{
+			await Publish(Mqtt, Topic, Encoding.UTF8.GetBytes(Data));
+		}
+
 		private static async Task Publish(MqttClient Mqtt, string Topic, byte[] Data)
 		{
-			string Digest = Hashes.ComputeSHA256HashString(Data);
+			string Digest = ComputeHash(Topic, Data);
 			recentlySent[Digest] = true;
 
 			await Mqtt.PUBLISH(Topic, MqttQualityOfService.AtMostOnce, true, Data);
+			Console.Out.Write('.');
+		}
+
+		private static string ComputeHash(string Topic, byte[] Data)
+		{
+			byte[] Bin = Encoding.UTF8.GetBytes(Topic);
+			int c = Bin.Length;
+			int d = Data.Length;
+			byte[] Data2 = new byte[c + d];
+
+			Array.Copy(Bin, 0, Data2, 0, c);
+			Array.Copy(Data, 0, Data2, c, d);
+
+			return Hashes.ComputeSHA256HashString(Data2);
 		}
 
 		private static readonly Random rnd = new Random();
