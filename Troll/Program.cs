@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
@@ -12,7 +11,7 @@ using Waher.Events;
 using Waher.Events.Console;
 using Waher.Events.MQTT;
 using Waher.Networking.MQTT;
-using Waher.Networking.Sniffers;
+using Waher.Networking.XMPP.Sensor;
 using Waher.Persistence;
 using Waher.Persistence.Files;
 using Waher.Runtime.Cache;
@@ -20,7 +19,9 @@ using Waher.Runtime.Inventory;
 using Waher.Runtime.Inventory.Loader;
 using Waher.Runtime.Queue;
 using Waher.Runtime.Settings;
+using Waher.Script.Objects;
 using Waher.Security;
+using Waher.Things.SensorData;
 
 namespace Troll
 {
@@ -34,6 +35,8 @@ namespace Troll
 	/// </summary>
 	internal class Program
 	{
+		const int Trolliness = 3;   // 1=maximum. Higher values decrease probability of content being altered.
+
 		/// <summary>
 		/// Program entry point
 		/// </summary>
@@ -90,9 +93,6 @@ namespace Troll
 
 				// Configuring and connecting to MQTT Server
 
-				using XmlFileSniffer MqttSniffer = new XmlFileSniffer(Path.Combine(Environment.CurrentDirectory, "MQTT", "Mqtt.xml"),
-					string.Empty, 7, BinaryPresentationMethod.ByteCount);
-
 				do
 				{
 					// MQTT Configuration
@@ -130,7 +130,7 @@ namespace Troll
 
 					TaskCompletionSource<bool> WaitForConnect = new TaskCompletionSource<bool>();
 
-					Mqtt = new MqttClient(MqttHost, MqttPort, MqttEncrypted, MqttUserName, MqttPassword, MqttSniffer);
+					Mqtt = new MqttClient(MqttHost, MqttPort, MqttEncrypted, MqttUserName, MqttPassword);
 
 					Mqtt.OnConnectionError += (_, e) =>
 					{
@@ -462,10 +462,13 @@ namespace Troll
 		{
 			int c = Data.Length;
 			if (c > 1024)
-				await Publish(Mqtt, Topic, RandomBytes(1024), true, 'r');
+			{
+				if (RandomInt(1 * Trolliness) == 0)
+					await Publish(Mqtt, Topic, RandomBytes(1024), true, 'r');
+			}
 			else
 			{
-				switch (RandomInt(4))
+				switch (RandomInt(4 * Trolliness))
 				{
 					case 0: // Half size
 						Array.Resize(ref Data, c / 2);
@@ -512,7 +515,7 @@ namespace Troll
 		/// <param name="i">Integer received on topic.</param>
 		private static async Task TrollInteger(MqttClient Mqtt, string Topic, long i)
 		{
-			switch (RandomInt(6))
+			switch (RandomInt(6 * Trolliness))
 			{
 				case 0: // Half
 					await Publish(Mqtt, Topic, (i / 2).ToString(), 'h');
@@ -542,7 +545,7 @@ namespace Troll
 
 		private static async Task TrollDouble(MqttClient Mqtt, string Topic, double d)
 		{
-			switch (RandomInt(7))
+			switch (RandomInt(7 * Trolliness))
 			{
 				case 0: // Half
 					await Publish(Mqtt, Topic, CommonTypes.Encode(d / 2), 'h');
@@ -576,7 +579,7 @@ namespace Troll
 
 		private static async Task TrollTimeSpan(MqttClient Mqtt, string Topic, TimeSpan TS)
 		{
-			switch (RandomInt(6))
+			switch (RandomInt(6 * Trolliness))
 			{
 				case 0: // Half
 					await Publish(Mqtt, Topic, TimeSpan.FromTicks(TS.Ticks / 2).ToString(), 'h');
@@ -606,7 +609,7 @@ namespace Troll
 
 		private static async Task TrollDateTime(MqttClient Mqtt, string Topic, DateTime TP)
 		{
-			switch (RandomInt(11))
+			switch (RandomInt(11 * Trolliness))
 			{
 				case 0: // Half
 					await Publish(Mqtt, Topic, XML.Encode(new DateTime(TP.Ticks / 2).ToString()), 'h');
@@ -694,7 +697,7 @@ namespace Troll
 		{
 			int c = Link.OriginalString.Length;
 
-			switch (RandomInt(6))
+			switch (RandomInt(6 * Trolliness))
 			{
 				case 0: // Half
 					await Publish(Mqtt, Topic, Link.OriginalString[0..(c / 2)], 'h');
@@ -706,7 +709,7 @@ namespace Troll
 						Scheme = Link.Scheme + "x"
 					};
 
-					await Publish(Mqtt, Topic, b.Uri.ToString(), 'x');
+					await Publish(Mqtt, Topic, b.Uri.ToString(), 'c');
 					break;
 
 				case 2: // Change domain
@@ -741,7 +744,7 @@ namespace Troll
 		{
 			int c = s.Length;
 
-			switch (RandomInt(4))
+			switch (RandomInt(4 * Trolliness))
 			{
 				case 0: // Half
 					await Publish(Mqtt, Topic, s[0..(c / 2)], 'h');
@@ -763,7 +766,7 @@ namespace Troll
 
 		private static async Task TrollObject(MqttClient Mqtt, string Topic, Dictionary<string, object> Object)
 		{
-			ulong i = RandomInt(10);
+			ulong i = RandomInt(10 * Trolliness);
 
 			if (i == 0)
 				await PublishRandomBlob(Mqtt, Topic);
@@ -775,7 +778,7 @@ namespace Troll
 				{
 					int c = P.Key.Length;
 
-					switch (RandomInt(5))
+					switch (RandomInt(5 * Trolliness))
 					{
 						case 0: // Half key
 							Object2[P.Key[0..(c / 2)]] = P.Value;
@@ -804,7 +807,7 @@ namespace Troll
 
 		private static async Task TrollArray(MqttClient Mqtt, string Topic, Array Array)
 		{
-			ulong i = RandomInt(10);
+			ulong i = RandomInt(10 * Trolliness);
 
 			if (i == 0)
 				await PublishRandomBlob(Mqtt, Topic);
@@ -814,7 +817,7 @@ namespace Troll
 
 				foreach (object Item in Array)
 				{
-					switch (RandomInt(4))
+					switch (RandomInt(4 * Trolliness))
 					{
 						case 0:
 							Array2.Add(Item);
@@ -828,7 +831,7 @@ namespace Troll
 							Array2.Add(Base64Url.Encode(RandomBytes(16)));
 							break;
 
-						case 3: // Ignore key
+						case 3: // Ignore item
 							break;
 					}
 				}
@@ -839,7 +842,350 @@ namespace Troll
 
 		private static async Task TrollXml(MqttClient Mqtt, string Topic, XmlDocument Xml)
 		{
-			// TODO
+			if (Topic == "HardenMqtt/Events")
+				return;		// Avoid messing up event log, for pedagogical reasons.
+
+			ulong i = RandomInt(10 * Trolliness);
+
+			if (i == 0)
+			{
+				await PublishRandomBlob(Mqtt, Topic);
+				return;
+			}
+
+			SensorData SensorData;
+
+			try
+			{
+				SensorData = SensorClient.ParseFields(Xml.DocumentElement);
+			}
+			catch
+			{
+				SensorData = null;
+			}
+
+			if (SensorData?.Fields is null)
+			{
+				StringBuilder sb = new StringBuilder();
+				XmlWriterSettings Settings = new XmlWriterSettings()
+				{
+					OmitXmlDeclaration = true
+				};
+				using XmlWriter Output = XmlWriter.Create(sb, Settings);
+
+				Troll(Xml.DocumentElement, Output);
+
+				Output.Flush();
+
+				await Publish(Mqtt, Topic, sb.ToString(), 'x');
+			}
+			else
+			{
+				List<Field> Fields = new List<Field>();
+
+				foreach (Field Field in SensorData.Fields)
+				{
+					switch (RandomInt(10 * Trolliness))
+					{
+						case 0: // Leave Name as is
+							break;
+
+						case 1: // Halve Name
+							Field.Name = Field.Name[0..(Field.Name.Length / 2)];
+							break;
+
+						case 2: // Double Name
+							Field.Name += Field.Name;
+							break;
+
+						case 3: // Halve Value
+							if (Field is BooleanField BooleanField)
+								BooleanField.Value = false;
+							else if (Field is Int32Field Int32Field)
+								Int32Field.Value /= 2;
+							else if (Field is Int64Field Int64Field)
+								Int64Field.Value /= 2;
+							else if (Field is DateField DateField)
+								DateField.Value = new DateTime(DateField.Value.Ticks / 2);
+							else if (Field is DateTimeField DateTimeField)
+								DateTimeField.Value = new DateTime(DateTimeField.Value.Ticks / 2);
+							else if (Field is DurationField DurationField)
+							{
+								DurationField.Value = new Duration(
+									DurationField.Value.Negation,
+									DurationField.Value.Years / 2,
+									DurationField.Value.Months / 2,
+									DurationField.Value.Days / 2,
+									DurationField.Value.Hours / 2,
+									DurationField.Value.Minutes / 2,
+									DurationField.Value.Seconds / 2);
+							}
+							else if (Field is EnumField EnumField)
+							{
+								string s = EnumField.Value.ToString();
+								Fields.Add(new StringField(EnumField.Thing, EnumField.Timestamp, EnumField.Name, s[0..(s.Length / 2)], EnumField.Type, EnumField.QoS));
+								continue;
+							}
+							else if (Field is QuantityField QuantityField)
+								QuantityField.Value /= 2;
+							else if (Field is StringField StringField)
+								StringField.Value = StringField.Value[0..(StringField.Value.Length / 2)];
+							else if (Field is TimeField TimeField)
+								TimeField.Value /= 2;
+							break;
+
+						case 4: // Double Value
+							if (Field is BooleanField BooleanField2)
+								BooleanField2.Value = true;
+							else if (Field is Int32Field Int32Field2)
+								Int32Field2.Value *= 2;
+							else if (Field is Int64Field Int64Field2)
+								Int64Field2.Value *= 2;
+							else if (Field is DateField DateField2)
+								DateField2.Value = new DateTime(DateField2.Value.Ticks * 2);
+							else if (Field is DateTimeField DateTimeField2)
+								DateTimeField2.Value = new DateTime(DateTimeField2.Value.Ticks * 2);
+							else if (Field is DurationField DurationField2)
+							{
+								DurationField2.Value = new Duration(
+									DurationField2.Value.Negation,
+									DurationField2.Value.Years * 2,
+									DurationField2.Value.Months * 2,
+									DurationField2.Value.Days * 2,
+									DurationField2.Value.Hours * 2,
+									DurationField2.Value.Minutes * 2,
+									DurationField2.Value.Seconds * 2);
+							}
+							else if (Field is EnumField EnumField2)
+							{
+								string s = EnumField2.Value.ToString();
+								Fields.Add(new StringField(EnumField2.Thing, EnumField2.Timestamp, EnumField2.Name, s + s, EnumField2.Type, EnumField2.QoS));
+								continue;
+							}
+							else if (Field is QuantityField QuantityField2)
+								QuantityField2.Value *= 2;
+							else if (Field is StringField StringField2)
+								StringField2.Value += StringField2.Value;
+							else if (Field is TimeField TimeField2)
+								TimeField2.Value *= 2;
+							break;
+
+						case 5: // Negate Value
+							if (Field is BooleanField BooleanField3)
+								BooleanField3.Value = !BooleanField3.Value;
+							else if (Field is Int32Field Int32Field3)
+								Int32Field3.Value = -Int32Field3.Value;
+							else if (Field is Int64Field Int64Field3)
+								Int64Field3.Value = -Int64Field3.Value;
+							else if (Field is DateField DateField3)
+								DateField3.Value = DateTime.MinValue;
+							else if (Field is DateTimeField DateTimeField3)
+								DateTimeField3.Value = DateTime.MinValue;
+							else if (Field is DurationField DurationField3)
+							{
+								DurationField3.Value = new Duration(
+									!DurationField3.Value.Negation,
+									DurationField3.Value.Years,
+									DurationField3.Value.Months,
+									DurationField3.Value.Days,
+									DurationField3.Value.Hours,
+									DurationField3.Value.Minutes,
+									DurationField3.Value.Seconds);
+							}
+							else if (Field is EnumField EnumField3)
+							{
+								Fields.Add(new StringField(EnumField3.Thing, EnumField3.Timestamp, EnumField3.Name, string.Empty, EnumField3.Type, EnumField3.QoS));
+								continue;
+							}
+							else if (Field is QuantityField QuantityField3)
+								QuantityField3.Value = -QuantityField3.Value;
+							else if (Field is StringField StringField3)
+								StringField3.Value = string.Empty;
+							else if (Field is TimeField TimeField3)
+								TimeField3.Value = -TimeField3.Value;
+							break;
+
+						case 6: // Randomize
+							if (Field is BooleanField BooleanField4)
+								BooleanField4.Value = RandomInt(2) != 0;
+							else if (Field is Int32Field Int32Field4)
+								Int32Field4.Value = (int)RandomInt();
+							else if (Field is Int64Field Int64Field4)
+								Int64Field4.Value = (long)RandomInt();
+							else if (Field is DateField DateField4)
+							{
+								int Year = (int)RandomInt(10000);
+								int Month = (int)(RandomInt(12) + 1);
+								int Day = (int)(RandomInt((uint)DateTime.DaysInMonth(Year, Month)) + 1);
+
+								DateField4.Value = new DateTime(Year, Month, Day);
+							}
+							else if (Field is DateTimeField DateTimeField4)
+							{
+								int Year = (int)RandomInt(10000);
+								int Month = (int)(RandomInt(12) + 1);
+								int Day = (int)(RandomInt((uint)DateTime.DaysInMonth(Year, Month)) + 1);
+								int Hour = (int)RandomInt(24);
+								int Minute = (int)RandomInt(60);
+								int Second = (int)RandomInt(60);
+
+								DateTimeField4.Value = new DateTime(Year, Month, Day, Hour, Minute, Second);
+							}
+							else if (Field is DurationField DurationField4)
+							{
+								int Years = (int)RandomInt((uint)(DurationField4.Value.Years * 2 + 1));
+								int Months = (int)RandomInt((uint)(DurationField4.Value.Months * 2 + 1));
+								int Days = (int)RandomInt((uint)(DurationField4.Value.Days * 2 + 1));
+								int Hours = (int)RandomInt((uint)(DurationField4.Value.Hours * 2 + 1));
+								int Minutes = (int)RandomInt((uint)(DurationField4.Value.Minutes * 2 + 1));
+								int Seconds = (int)RandomInt((uint)(DurationField4.Value.Seconds * 2 + 1));
+
+								DurationField4.Value = new Duration(DurationField4.Value.Negation, Years, Months, Days, Hours, Minutes, Seconds);
+							}
+							else if (Field is EnumField EnumField4)
+							{
+								Array Values = Enum.GetValues(EnumField4.Value.GetType());
+								EnumField4.Value = (Enum)Values.GetValue((int)RandomInt((uint)Values.Length));
+							}
+							else if (Field is QuantityField QuantityField4)
+								QuantityField4.Value = RandomDouble(QuantityField4.Value * 2);
+							else if (Field is StringField StringField4)
+								StringField4.Value = Base64Url.Encode(RandomBytes(16));
+							else if (Field is TimeField TimeField4)
+								TimeField4.Value *= RandomDouble(2);
+							break;
+
+						case 7: // String
+							Fields.Add(new StringField(Field.Thing, Field.Timestamp, Field.Name, "Kilroy was here", Field.Type, Field.QoS));
+							break;
+
+						case 8: // Change type
+							object Value = TrollValue(Field.ObjectValue);
+
+							if (Value is bool b)
+								Fields.Add(new BooleanField(Field.Thing, Field.Timestamp, Field.Name, b, Field.Type, Field.QoS));
+							else if (Value is int i2)
+								Fields.Add(new Int32Field(Field.Thing, Field.Timestamp, Field.Name, i2, Field.Type, Field.QoS));
+							else if (Value is long l)
+								Fields.Add(new Int64Field(Field.Thing, Field.Timestamp, Field.Name, l, Field.Type, Field.QoS));
+							else if (Value is DateTime TP)
+								Fields.Add(new DateTimeField(Field.Thing, Field.Timestamp, Field.Name, TP, Field.Type, Field.QoS));
+							else if (Value is Duration D)
+								Fields.Add(new DurationField(Field.Thing, Field.Timestamp, Field.Name, D, Field.Type, Field.QoS));
+							else if (Value is Enum E)
+								Fields.Add(new EnumField(Field.Thing, Field.Timestamp, Field.Name, E, Field.Type, Field.QoS));
+							else if (Value is TimeSpan TS)
+								Fields.Add(new TimeField(Field.Thing, Field.Timestamp, Field.Name, TS, Field.Type, Field.QoS));
+							else if (Value is double d)
+								Fields.Add(new QuantityField(Field.Thing, Field.Timestamp, Field.Name, d, CommonTypes.GetNrDecimals(d), string.Empty, Field.Type, Field.QoS));
+							else if (Value is PhysicalQuantity Q)
+								Fields.Add(new QuantityField(Field.Thing, Field.Timestamp, Field.Name, Q.Magnitude, CommonTypes.GetNrDecimals(Q.Magnitude), Q.Unit.ToString(), Field.Type, Field.QoS));
+							else
+								Fields.Add(new StringField(Field.Thing, Field.Timestamp, Field.Name, Value?.ToString(), Field.Type, Field.QoS));
+							continue;
+
+						case 9: // Ignore field
+							continue;
+					}
+
+					Fields.Add(Field);
+				}
+
+				SensorData = new SensorData(Fields.ToArray());
+
+				await Publish(Mqtt, Topic, SensorData.PayloadXml, 'x');
+			}
+		}
+
+		private static void Troll(XmlElement Element, XmlWriter Output)
+		{
+			switch (RandomInt(8 * Trolliness))
+			{
+				case 0: // Leave FQN as is
+				default:
+					Output.WriteStartElement(Element.LocalName, Element.NamespaceURI);
+					break;
+
+				case 1: // Halve Local Name
+					Output.WriteStartElement(Element.LocalName[0..(Element.LocalName.Length / 2)], Element.NamespaceURI);
+					break;
+
+				case 2: // Double Local Name
+					Output.WriteStartElement(Element.LocalName + Element.LocalName, Element.NamespaceURI);
+					break;
+
+				case 3: // Halve Namespace
+					Output.WriteStartElement(Element.LocalName, Element.NamespaceURI[0..(Element.NamespaceURI.Length / 2)]);
+					break;
+
+				case 4: // Double Namespace
+					Output.WriteStartElement(Element.LocalName, Element.NamespaceURI + Element.NamespaceURI);
+					break;
+
+				case 5: // Random Local Name
+					Output.WriteStartElement("_" + Hashes.BinaryToString(RandomBytes(16)), Element.NamespaceURI);
+					break;
+
+				case 6: // Random Namespace
+					Output.WriteStartElement(Element.LocalName, Base64Url.Encode(RandomBytes(16)));
+					break;
+
+				case 7: // Skip element
+					return;
+			}
+
+			foreach (XmlAttribute Attribute in Element.Attributes)
+			{
+				if (Attribute.Name == "xmlns" || Attribute.Prefix == "xmlns")
+					continue;
+
+				switch (RandomInt(8 * Trolliness))
+				{
+					case 0: // Leave attribute as is
+						Output.WriteAttributeString(Attribute.Name, Attribute.Value);
+						break;
+
+					case 1: // Halve Attribute Name
+						Output.WriteAttributeString(Attribute.Name[0..(Attribute.Name.Length / 2)], Attribute.Value);
+						break;
+
+					case 2: // Double Attribute Name
+						Output.WriteAttributeString(Attribute.Name + Attribute.Name, Attribute.Value);
+						break;
+
+					case 3: // Halve Value
+						Output.WriteAttributeString(Attribute.Name, Attribute.Value[0..(Attribute.Value.Length / 2)]);
+						break;
+
+					case 4: // Double Value
+						Output.WriteAttributeString(Attribute.Name, Attribute.Value + Attribute.Value);
+						break;
+
+					case 5: // Random Attribute Name
+						Output.WriteAttributeString("_" + Hashes.BinaryToString(RandomBytes(16)), Attribute.Value);
+						break;
+
+					case 6: // Random Value
+						Output.WriteAttributeString(Attribute.Name, Base64Url.Encode(RandomBytes(16)));
+						break;
+
+					case 7: // Skip attribute
+						continue;
+				}
+			}
+
+			if (Element.HasChildNodes)
+			{
+				foreach (XmlNode Child in Element.ChildNodes)
+				{
+					if (Child is XmlElement E)
+						Troll(E, Output);
+					else if (Child is XmlText Text)
+						Output.WriteValue(Text.InnerText);      // TODO
+				}
+			}
+
+			Output.WriteEndElement();
 		}
 
 		private static object TrollValue(object Value)
