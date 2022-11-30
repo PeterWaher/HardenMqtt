@@ -3,7 +3,13 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>netcoreapp3.1</TargetFramework>
+    <PackageIcon>Martin-Berube-Character-Troll.ico</PackageIcon>
+    <ApplicationIcon>Martin-Berube-Character-Troll.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="Martin-Berube-Character-Troll.ico" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Waher.Content" Version="2.4.7" />
