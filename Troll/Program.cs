@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
@@ -11,6 +12,7 @@ using Waher.Events;
 using Waher.Events.Console;
 using Waher.Events.MQTT;
 using Waher.Networking.MQTT;
+using Waher.Networking.Sniffers;
 using Waher.Persistence;
 using Waher.Persistence.Files;
 using Waher.Runtime.Cache;
@@ -88,6 +90,9 @@ namespace Troll
 
 				// Configuring and connecting to MQTT Server
 
+				using XmlFileSniffer MqttSniffer = new XmlFileSniffer(Path.Combine(Environment.CurrentDirectory, "MQTT", "Mqtt.xml"),
+					string.Empty, 7, BinaryPresentationMethod.ByteCount);
+
 				do
 				{
 					// MQTT Configuration
@@ -125,7 +130,7 @@ namespace Troll
 
 					TaskCompletionSource<bool> WaitForConnect = new TaskCompletionSource<bool>();
 
-					Mqtt = new MqttClient(MqttHost, MqttPort, MqttEncrypted, MqttUserName, MqttPassword);
+					Mqtt = new MqttClient(MqttHost, MqttPort, MqttEncrypted, MqttUserName, MqttPassword, MqttSniffer);
 
 					Mqtt.OnConnectionError += (_, e) =>
 					{
@@ -456,28 +461,32 @@ namespace Troll
 		private static async Task TrollBlob(MqttClient Mqtt, string Topic, byte[] Data)
 		{
 			int c = Data.Length;
-
-			switch (RandomInt(4))
+			if (c > 1024)
+				await Publish(Mqtt, Topic, RandomBytes(1024), true, 'r');
+			else
 			{
-				case 0: // Half size
-					Array.Resize(ref Data, c / 2);
-					await Publish(Mqtt, Topic, Data, true, 'h');
-					break;
+				switch (RandomInt(4))
+				{
+					case 0: // Half size
+						Array.Resize(ref Data, c / 2);
+						await Publish(Mqtt, Topic, Data, true, 'h');
+						break;
 
-				case 1: // Double size
-					Array.Resize(ref Data, c * 2);
-					Array.Copy(Data, 0, Data, c, c);
-					await Publish(Mqtt, Topic, Data, true, 'd');
-					break;
+					case 1: // Double size
+						Array.Resize(ref Data, c * 2);
+						Array.Copy(Data, 0, Data, c, c);
+						await Publish(Mqtt, Topic, Data, true, 'd');
+						break;
 
-				case 2: // Randomize
-					RandomBytes(Data);
-					await Publish(Mqtt, Topic, Data, true, 'r');
-					break;
+					case 2: // Randomize
+						RandomBytes(Data);
+						await Publish(Mqtt, Topic, Data, true, 'r');
+						break;
 
-				case 3: // Large BLOB
-					await PublishRandomBlob(Mqtt, Topic);
-					break;
+					case 3: // Large BLOB
+						await PublishRandomBlob(Mqtt, Topic);
+						break;
+				}
 			}
 		}
 
@@ -488,7 +497,7 @@ namespace Troll
 			if (i < 5000)
 				await Publish(Mqtt, Topic, RandomBytes(1024), true, 'k');
 			else if (i < 9900)
-				await Publish(Mqtt, Topic, RandomBytes(1024 * 1024), false, 'M');			// Play nice. Retaining will create a lot of data to download during initial subscription.
+				await Publish(Mqtt, Topic, RandomBytes(1024 * 1024), false, 'M');           // Play nice. Retaining will create a lot of data to download during initial subscription.
 			else if (i < 9990)
 				await Publish(Mqtt, Topic, RandomBytes(16 * 1024 * 1024), false, 'H');      // Play nice. Retaining will create a lot of data to download during initial subscription.
 			else
@@ -795,7 +804,37 @@ namespace Troll
 
 		private static async Task TrollArray(MqttClient Mqtt, string Topic, Array Array)
 		{
-			// TODO
+			ulong i = RandomInt(10);
+
+			if (i == 0)
+				await PublishRandomBlob(Mqtt, Topic);
+			else
+			{
+				List<object> Array2 = new List<object>();
+
+				foreach (object Item in Array)
+				{
+					switch (RandomInt(4))
+					{
+						case 0:
+							Array2.Add(Item);
+							break;
+
+						case 1:
+							Array2.Add(TrollValue(Item));
+							break;
+
+						case 2: // Random value
+							Array2.Add(Base64Url.Encode(RandomBytes(16)));
+							break;
+
+						case 3: // Ignore key
+							break;
+					}
+				}
+
+				await Publish(Mqtt, Topic, JSON.Encode(Array2, false), 'a');
+			}
 		}
 
 		private static async Task TrollXml(MqttClient Mqtt, string Topic, XmlDocument Xml)
