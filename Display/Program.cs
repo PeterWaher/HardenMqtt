@@ -655,7 +655,7 @@ namespace Display
 				RowPerField[Key] = Console.CursorTop;
 
 				Print(Key, 25, ConsoleColor.White, ConsoleColor.Black, TextAlignment.Left);
-				Print(Value, 50, ConsoleColor.White, ConsoleColor.DarkGray, TextAlignment.Right);
+				Print(Value ?? string.Empty, 50, ConsoleColor.White, ConsoleColor.DarkGray, TextAlignment.Right);
 
 				Console.Out.WriteLine();
 			}
