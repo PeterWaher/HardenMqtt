@@ -11,6 +11,7 @@ using System;
 using Monitor.Model;
 using Waher.Events.Files;
 using System.IO;
+using Waher.Networking.MQTT;
 
 namespace Monitor
 {
@@ -105,6 +106,15 @@ namespace Monitor
 		private void TopicTree_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
 		{
 			((MqttViewModel)this.DataContext).SelectedTopic = (((TreeView)sender).SelectedItem as MqttTopic)?.Topic;
+		}
+
+		private void ListView_SelectionChanged(object sender, SelectionChangedEventArgs e)
+		{
+			if (sender is ListView ListView && ListView.SelectedItem is MqttContent Content && Content.Data.Length <= 4096)
+			{
+				string s = Encoding.UTF8.GetString(Content.Data);
+				((MqttViewModel)this.DataContext).SelectedContent = s;
+			}
 		}
 	}
 }

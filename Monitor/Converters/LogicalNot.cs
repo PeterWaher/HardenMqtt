@@ -12,12 +12,15 @@ namespace Monitor.Converters
 	{
 		public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
 		{
-			return !((bool)value);
+			if (value is bool b)
+				return !b;
+
+			return value;
 		}
 
 		public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
 		{
-			return value;
+			return this.Convert(value, targetType, parameter, culture);
 		}
 
 		public override object ProvideValue(IServiceProvider serviceProvider)

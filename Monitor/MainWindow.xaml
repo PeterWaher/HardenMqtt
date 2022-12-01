@@ -5,6 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Monitor.Model"
         xmlns:converters="clr-namespace:Monitor.Converters"
+        xmlns:mqtt="clr-namespace:Waher.Networking.MQTT;assembly=Waher.Networking.MQTT" 
 		DataContext="local:MqttViewModel"
         mc:Ignorable="d" Title="MQTT Monitor" Height="800" Width="1280"
 		Closing="Window_Closing" Activated="Window_Activated">
@@ -20,50 +21,59 @@
 			<RowDefinition Height="*"/>
 			<RowDefinition Height="Auto"/>
 		</Grid.RowDefinitions>
-		<StackPanel Grid.Row="0" Grid.Column="0" Margin="10,0,10,0">
-			<Label Content="Host:"/>
-			<TextBox Text="{Binding Host, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding CanEditConnection}" 
+		<ScrollViewer Grid.Row="0" Grid.Column="0" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" MaxWidth="250">
+			<StackPanel Margin="10,0,10,0">
+				<Label Content="Host:"/>
+				<TextBox Text="{Binding Host, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding CanEditConnection}" 
 					 ToolTip="Enter the host name of the MQTT server to connect to here." />
-			<Label Content="Port:"/>
-			<TextBox Text="{Binding Port}" IsEnabled="{Binding CanEditConnection}" ToolTip="Enter the port number of the MQTT service to connect to here." />
-			<Label Content="User Name:"/>
-			<TextBox Text="{Binding UserName}" IsEnabled="{Binding CanEditConnection}" ToolTip="Enter the user name of the MQTT account here." />
-			<Label Content="Password:"/>
-			<PasswordBox IsEnabled="{Binding CanEditConnection}" ToolTip="Enter the password of the MQTT account here." PasswordChanged="PasswordBox_PasswordChanged" />
-			<TextBlock TextWrapping="Wrap"><Run FontWeight="Bold" Text="Note:"/><Run Text=" Password is not handled securely in MQTT."/></TextBlock>
-			<CheckBox IsChecked="{Binding Tls}" IsEnabled="{Binding CanEditConnection}" Content="Connect using TLS." Margin="0,10,0,0"/>
-			<CheckBox IsChecked="{Binding TrustCertificate}" IsEnabled="{Binding CanEditConnection}" Content="Trust certificate." Margin="0,10,0,0"/>
-			<Button Content="Connect" Margin="0,10,0,0" Command="{Binding Connect}" IsEnabled="{Binding CanEditConnection}"/>
-			<Button Content="Close" Margin="0,10,0,0" Command="{Binding Close}" IsEnabled="{Binding CanEditConnection, Converter={converters:LogicalNot}}"/>
-			<Button Content="Clear" Margin="0,10,0,0" Command="{Binding Clear}"/>
-			<Separator Margin="10,20,10,10"/>
-			<Label Content="Topic:"/>
-			<TextBox Text="{Binding SelectedTopic, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding Connected}" 
+				<Label Content="Port:"/>
+				<TextBox Text="{Binding Port}" IsEnabled="{Binding CanEditConnection}" ToolTip="Enter the port number of the MQTT service to connect to here." />
+				<Label Content="User Name:"/>
+				<TextBox Text="{Binding UserName}" IsEnabled="{Binding CanEditConnection}" ToolTip="Enter the user name of the MQTT account here." />
+				<Label Content="Password:"/>
+				<PasswordBox IsEnabled="{Binding CanEditConnection}" ToolTip="Enter the password of the MQTT account here." PasswordChanged="PasswordBox_PasswordChanged" />
+				<TextBlock TextWrapping="Wrap"><Run FontWeight="Bold" Text="Note:"/><Run Text=" Password is not handled securely in MQTT."/></TextBlock>
+				<CheckBox IsChecked="{Binding Tls}" IsEnabled="{Binding CanEditConnection}" Content="Connect using TLS." Margin="0,10,0,0"/>
+				<CheckBox IsChecked="{Binding TrustCertificate}" IsEnabled="{Binding CanEditConnection}" Content="Trust certificate." Margin="0,10,0,0"/>
+				<Button Content="Connect" Margin="0,10,0,0" Command="{Binding Connect}" IsEnabled="{Binding CanEditConnection}"/>
+				<Button Content="Close" Margin="0,10,0,0" Command="{Binding Close}" IsEnabled="{Binding CanEditConnection, Converter={converters:LogicalNot}}"/>
+				<Button Content="Clear" Margin="0,10,0,0" Command="{Binding Clear}"/>
+				<Separator Margin="10,20,10,10"/>
+				<Label Content="Topic:"/>
+				<TextBox Text="{Binding SelectedTopic, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding Connected}" 
 					 ToolTip="Topic to publish to." />
-			<Label Content="Content:"/>
-			<TextBox Text="{Binding SelectedContent, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding Connected}" 
-					 ToolTip="Content to publish." />
-			<Label Content="Quality of Service:"/>
-			<ComboBox SelectedIndex="{Binding QoS, Converter={converters:QosToInt}}" IsEnabled="{Binding Connected}">
-				<ComboBoxItem Content="At most once"/>
-				<ComboBoxItem Content="At least once"/>
-				<ComboBoxItem Content="Exactly once"/>
-			</ComboBox>
-			<CheckBox IsChecked="{Binding Retain}" IsEnabled="{Binding Connected}" Content="Retain content." Margin="0,10,0,0"/>
-			<Button Content="Publish" Margin="0,10,0,0" Command="{Binding Publish}" IsEnabled="{Binding Connected}"/>
-		</StackPanel>
+				<Label Content="Content:"/>
+				<TextBox Text="{Binding SelectedContent, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding Connected}" 
+					 ToolTip="Content to publish." TextWrapping="Wrap" AcceptsReturn="True" />
+				<Label Content="Quality of Service:"/>
+				<ComboBox SelectedIndex="{Binding QoS, Converter={converters:QosToInt}}" IsEnabled="{Binding Connected}">
+					<ComboBoxItem Content="At most once"/>
+					<ComboBoxItem Content="At least once"/>
+					<ComboBoxItem Content="Exactly once"/>
+				</ComboBox>
+				<CheckBox IsChecked="{Binding Retain}" IsEnabled="{Binding Connected}" Content="Retain content." Margin="0,10,0,0"/>
+				<Button Content="Publish" Margin="0,10,0,0" Command="{Binding Publish}" IsEnabled="{Binding Connected}"/>
+			</StackPanel>
+		</ScrollViewer>
 		<GridSplitter Grid.Row="0" Grid.Column="1" HorizontalAlignment="Stretch"/>
 		<TreeView x:Name="TopicTree" MinWidth="200" DockPanel.Dock="Left" Grid.Row="0" Grid.Column="2" ItemsSource="{Binding RootTopics}"
 				  ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto" Padding="0,0,10,0" 
 				  SelectedItemChanged="TopicTree_SelectedItemChanged">
 			<TreeView.ItemTemplate>
-				<HierarchicalDataTemplate ItemsSource="{Binding Items}">
+				<HierarchicalDataTemplate ItemsSource="{Binding Items}" DataType="local:MqttTopic">
 					<TextBlock Text="{Binding LocalName}"/>
 				</HierarchicalDataTemplate>
 			</TreeView.ItemTemplate>
 		</TreeView>
 		<GridSplitter Grid.Row="0" Grid.Column="3" HorizontalAlignment="Stretch"/>
-		<ListView Grid.Row="0" Grid.Column="4">
+		<ListView Grid.Row="0" Grid.Column="4" ItemsSource="{Binding Messages}" SelectionMode="Single" 
+				  ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Auto"
+				  SelectionChanged="ListView_SelectionChanged">
+			<ListView.ItemTemplate>
+				<DataTemplate DataType="mqtt:MqttContent">
+					<TextBlock Text="{Binding Data, Converter={converters:BinaryToText}}" TextWrapping="Wrap"/>
+				</DataTemplate>
+			</ListView.ItemTemplate>
 		</ListView>
 		<StatusBar Name="StatusBar" VerticalAlignment="Bottom" Grid.Column="0" Grid.Row="1" Grid.ColumnSpan="5">
 			<StatusBarItem HorizontalAlignment="Left">

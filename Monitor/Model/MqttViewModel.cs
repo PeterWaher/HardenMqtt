@@ -30,6 +30,7 @@ namespace Monitor.Model
 		private readonly BindableProperty<bool> retain;
 		private readonly Dictionary<string, MqttTopic> topics = new Dictionary<string, MqttTopic>();
 		private readonly ObservableCollection<MqttTopic> rootTopics = new ObservableCollection<MqttTopic>();
+		private readonly ObservableCollection<MqttContent> messages = new ObservableCollection<MqttContent>();
 		private MqttClient mqtt;
 
 		/// <summary>
@@ -163,7 +164,11 @@ namespace Monitor.Model
 		public string SelectedTopic
 		{
 			get => this.selectedTopic.Value;
-			set => this.selectedTopic.Value = value;
+			set
+			{
+				this.selectedTopic.Value = value;
+				this.messages.Clear();
+			}
 		}
 
 		/// <summary>
@@ -202,6 +207,11 @@ namespace Monitor.Model
 		/// Root topics
 		/// </summary>
 		public ObservableCollection<MqttTopic> RootTopics => this.rootTopics;
+
+		/// <summary>
+		/// Messages
+		/// </summary>
+		public ObservableCollection<MqttContent> Messages => this.messages;
 
 		/// <summary>
 		/// Connect command
@@ -296,6 +306,9 @@ namespace Monitor.Model
 			{
 				try
 				{
+					if (Content.Topic == this.SelectedTopic)
+						this.Messages.Add(Content);
+
 					if (!this.topics.TryGetValue(Content.Topic, out MqttTopic Topic))
 					{
 						string[] Parts = Content.Topic.Split('/');
