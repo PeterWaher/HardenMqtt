@@ -430,7 +430,7 @@ namespace Troll
 		{
 			Result = null;
 			s = s.Trim();
-			if (!s.StartsWith("<") || !s.EndsWith(">"))
+			if (!s.StartsWith("<") || !s.EndsWith(">") || !XML.IsValidXml(s))
 				return false;
 
 			try
