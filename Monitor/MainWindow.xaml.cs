@@ -8,6 +8,7 @@ using Waher.Runtime.Inventory.Loader;
 using Waher.Runtime.Inventory;
 using System.Threading.Tasks;
 using System;
+using Monitor.Model;
 
 namespace Monitor
 {

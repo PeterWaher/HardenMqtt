@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Monitor.UI;
+using System;
 using System.ComponentModel;
 using System.Threading.Tasks;
 using System.Windows;
@@ -6,7 +7,7 @@ using Waher.Events;
 using Waher.Networking.MQTT;
 using Waher.Runtime.Settings;
 
-namespace Monitor
+namespace Monitor.Model
 {
 	/// <summary>
 	/// View model for the main window in the monitor app

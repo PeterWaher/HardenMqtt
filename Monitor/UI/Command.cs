@@ -2,7 +2,7 @@
 using System.Windows.Input;
 using Waher.Events;
 
-namespace Monitor
+namespace Monitor.UI
 {
 	/// <summary>
 	/// Delegate for CanExecute method calls.
