@@ -6,8 +6,8 @@
         xmlns:local="clr-namespace:Monitor"
         xmlns:converters="clr-namespace:Monitor.Converters"
 		DataContext="local:MqttViewModel"
-        mc:Ignorable="d"
-        Title="MQTT Monitor" Height="450" Width="800">
+        mc:Ignorable="d" Title="MQTT Monitor" Height="450" Width="800"
+		Closing="Window_Closing">
 	<Grid DockPanel.Dock="Top">
 		<Grid.ColumnDefinitions>
 			<ColumnDefinition Width="Auto"/>

@@ -2,16 +2,16 @@
 using System.ComponentModel;
 using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Input;
 using Waher.Events;
 using Waher.Networking.MQTT;
+using Waher.Runtime.Settings;
 
 namespace Monitor
 {
 	/// <summary>
 	/// View model for the main window in the monitor app
 	/// </summary>
-	public class MqttViewModel : INotifyPropertyChanged
+	public class MqttViewModel : INotifyPropertyChanged, IDisposable
 	{
 		private MqttClient mqtt;
 		private string host = string.Empty;
@@ -24,11 +24,29 @@ namespace Monitor
 		/// <summary>
 		/// View model for the main window in the monitor app
 		/// </summary>
-		public MqttViewModel()
+		private MqttViewModel()
 		{
 			this.Connect = new Command(this.ExecuteConnect);
 			this.Close = new Command(this.ExecuteClose);
 			this.Clear = new Command(this.ExecuteClear);
+		}
+
+		/// <summary>
+		/// Creates an instance of the view model.
+		/// </summary>
+		/// <returns>Newly created view model.</returns>
+		public static async Task<MqttViewModel> Create()
+		{
+			MqttViewModel Result = new MqttViewModel();
+
+			Result.host = RuntimeSettings.Get("MQTT.Host", Result.host);
+			Result.port = (int)RuntimeSettings.Get("MQTT.Port", Result.port);
+			Result.tls = RuntimeSettings.Get("MQTT.Tls", Result.tls);
+			Result.userName = RuntimeSettings.Get("MQTT.UserName", Result.userName);
+			Result.password = RuntimeSettings.Get("MQTT.Password", Result.password);
+			Result.trustCertificate = RuntimeSettings.Get("MQTT.TrustServer", Result.trustCertificate);
+
+			return Result;
 		}
 
 		/// <summary>
@@ -169,12 +187,21 @@ namespace Monitor
 					TrustServer = this.TrustCertificate
 				};
 
-				this.mqtt.OnStateChanged += (_, __) =>
+				this.mqtt.OnStateChanged += async (_, __) =>
 				{
 					this.OnPropertyChanged(nameof(this.ConnectionState));
 					this.OnPropertyChanged(nameof(this.CanEditConnection));
 					this.Connect.Changed();
-					return Task.CompletedTask;
+
+					if (this.mqtt.State == MqttState.Connected)
+					{
+						await RuntimeSettings.SetAsync("MQTT.Host", this.host);
+						await RuntimeSettings.SetAsync("MQTT.Port", this.port);
+						await RuntimeSettings.SetAsync("MQTT.Tls", this.tls);
+						await RuntimeSettings.SetAsync("MQTT.UserName", this.userName);
+						await RuntimeSettings.SetAsync("MQTT.Password", this.password);
+						await RuntimeSettings.SetAsync("MQTT.TrustServer", this.trustCertificate);
+					}
 				};
 
 				this.Connect.Changed();
@@ -207,6 +234,15 @@ namespace Monitor
 		private void ExecuteClear()
 		{
 			// TODO
+		}
+
+		/// <summary>
+		/// <see cref="IDisposable.Dispose"/>
+		/// </summary>
+		public void Dispose()
+		{
+			this.mqtt?.Dispose();
+			this.mqtt = null;
 		}
 	}
 }
