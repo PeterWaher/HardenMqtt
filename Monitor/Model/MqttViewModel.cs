@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using Waher.Events;
@@ -21,7 +22,12 @@ namespace Monitor.Model
 		private readonly BindableProperty<string> userName;
 		private readonly BindableProperty<string> password;
 		private readonly BindableProperty<MqttState> state;
+		private readonly BindableProperty<bool> connected;
 		private readonly BindableProperty<string> lastTopic;
+		private readonly BindableProperty<string> selectedTopic;
+		private readonly BindableProperty<string> selectedContent;
+		private readonly BindableProperty<MqttQualityOfService> qos;
+		private readonly BindableProperty<bool> retain;
 		private readonly Dictionary<string, MqttTopic> topics = new Dictionary<string, MqttTopic>();
 		private readonly ObservableCollection<MqttTopic> rootTopics = new ObservableCollection<MqttTopic>();
 		private MqttClient mqtt;
@@ -40,11 +46,17 @@ namespace Monitor.Model
 			this.password = new BindableProperty<string>(this, nameof(this.Password), string.Empty);
 
 			this.state = new BindableProperty<MqttState>(this, nameof(this.State), MqttState.Offline);
+			this.connected = new BindableProperty<bool>(this, nameof(this.Connected), false);
 			this.lastTopic = new BindableProperty<string>(this, nameof(this.LastTopic), string.Empty);
+			this.selectedTopic = new BindableProperty<string>(this, nameof(this.SelectedTopic), string.Empty);
+			this.selectedContent = new BindableProperty<string>(this, nameof(this.SelectedContent), string.Empty);
+			this.qos = new BindableProperty<MqttQualityOfService>(this, nameof(this.QoS), MqttQualityOfService.AtMostOnce);
+			this.retain = new BindableProperty<bool>(this, nameof(this.Retain), false);
 
 			this.Connect = new Command(this.ExecuteConnect);
 			this.Close = new Command(this.ExecuteClose);
 			this.Clear = new Command(this.ExecuteClear);
+			this.Publish = new Command(this.ExecutePublish);
 		}
 
 		/// <summary>
@@ -52,12 +64,12 @@ namespace Monitor.Model
 		/// </summary>
 		public async Task Load()
 		{
-			this.host.Value = await RuntimeSettings.GetAsync("MQTT.Host", this.host.Value);
-			this.port.Value = (int)await RuntimeSettings.GetAsync("MQTT.Port", this.port.Value);
-			this.tls.Value = await RuntimeSettings.GetAsync("MQTT.Tls", this.tls.Value);
-			this.userName.Value = await RuntimeSettings.GetAsync("MQTT.UserName", this.userName.Value);
-			this.password.Value = await RuntimeSettings.GetAsync("MQTT.Password", this.password.Value);
-			this.trustCertificate.Value = await RuntimeSettings.GetAsync("MQTT.TrustServer", this.trustCertificate.Value);
+			this.Host = await RuntimeSettings.GetAsync("MQTT.Host", this.Host);
+			this.Port = (int)await RuntimeSettings.GetAsync("MQTT.Port", this.Port);
+			this.Tls = await RuntimeSettings.GetAsync("MQTT.Tls", this.Tls);
+			this.UserName = await RuntimeSettings.GetAsync("MQTT.UserName", this.UserName);
+			this.Password = await RuntimeSettings.GetAsync("MQTT.Password", this.Password);
+			this.TrustCertificate = await RuntimeSettings.GetAsync("MQTT.TrustServer", this.TrustCertificate);
 		}
 
 		/// <summary>
@@ -120,7 +132,20 @@ namespace Monitor.Model
 		public MqttState State
 		{
 			get => this.state.Value;
-			set => this.state.Value = value;
+			set
+			{
+				this.state.Value = value;
+				this.Connected = value == MqttState.Connected;
+			}
+		}
+
+		/// <summary>
+		/// If the connection to the broker is live.
+		/// </summary>
+		public bool Connected
+		{
+			get => this.connected.Value;
+			set => this.connected.Value = value;
 		}
 
 		/// <summary>
@@ -130,6 +155,42 @@ namespace Monitor.Model
 		{
 			get => this.lastTopic.Value;
 			set => this.lastTopic.Value = value;
+		}
+
+		/// <summary>
+		/// Selected topic.
+		/// </summary>
+		public string SelectedTopic
+		{
+			get => this.selectedTopic.Value;
+			set => this.selectedTopic.Value = value;
+		}
+
+		/// <summary>
+		/// Selected content.
+		/// </summary>
+		public string SelectedContent
+		{
+			get => this.selectedContent.Value;
+			set => this.selectedContent.Value = value;
+		}
+
+		/// <summary>
+		/// Quality of service.
+		/// </summary>
+		public MqttQualityOfService QoS
+		{
+			get => this.qos.Value;
+			set => this.qos.Value = value;
+		}
+
+		/// <summary>
+		/// Retain content
+		/// </summary>
+		public bool Retain
+		{
+			get => this.retain.Value;
+			set => this.retain.Value = value;
 		}
 
 		/// <summary>
@@ -156,6 +217,11 @@ namespace Monitor.Model
 		/// Clear command
 		/// </summary>
 		public Command Clear { get; }
+
+		/// <summary>
+		/// Publish command
+		/// </summary>
+		public Command Publish { get; }
 
 		/// <summary>
 		/// Connects to the broker.
@@ -203,12 +269,12 @@ namespace Monitor.Model
 				{
 					try
 					{
-						await RuntimeSettings.SetAsync("MQTT.Host", this.host.Value);
-						await RuntimeSettings.SetAsync("MQTT.Port", this.port.Value);
-						await RuntimeSettings.SetAsync("MQTT.Tls", this.tls.Value);
-						await RuntimeSettings.SetAsync("MQTT.UserName", this.userName.Value);
-						await RuntimeSettings.SetAsync("MQTT.Password", this.password.Value);
-						await RuntimeSettings.SetAsync("MQTT.TrustServer", this.trustCertificate.Value);
+						await RuntimeSettings.SetAsync("MQTT.Host", this.Host);
+						await RuntimeSettings.SetAsync("MQTT.Port", this.Port);
+						await RuntimeSettings.SetAsync("MQTT.Tls", this.Tls);
+						await RuntimeSettings.SetAsync("MQTT.UserName", this.UserName);
+						await RuntimeSettings.SetAsync("MQTT.Password", this.Password);
+						await RuntimeSettings.SetAsync("MQTT.TrustServer", this.TrustCertificate);
 
 						await this.mqtt.SUBSCRIBE("#");
 					}
@@ -304,6 +370,25 @@ namespace Monitor.Model
 		{
 			this.topics.Clear();
 			this.rootTopics.Clear();
+		}
+
+		/// <summary>
+		/// Publishes content to the broker.
+		/// </summary>
+		private async void ExecutePublish()
+		{
+			if (!(this.mqtt is null))
+			{
+				try
+				{
+					await this.mqtt.PUBLISH(this.SelectedTopic, this.QoS, this.Retain, Encoding.UTF8.GetBytes(this.SelectedContent));
+				}
+				catch (Exception ex)
+				{
+					Log.Critical(ex);
+					MessageBox.Show(ex.Message);
+				}
+			}
 		}
 
 		/// <summary>

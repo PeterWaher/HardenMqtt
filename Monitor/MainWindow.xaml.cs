@@ -101,5 +101,10 @@ namespace Monitor
 				}
 			}
 		}
+
+		private void TopicTree_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
+		{
+			((MqttViewModel)this.DataContext).SelectedTopic = (((TreeView)sender).SelectedItem as MqttTopic)?.Topic;
+		}
 	}
 }

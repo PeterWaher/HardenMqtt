@@ -36,9 +36,26 @@
 			<Button Content="Connect" Margin="0,10,0,0" Command="{Binding Connect}" IsEnabled="{Binding CanEditConnection}"/>
 			<Button Content="Close" Margin="0,10,0,0" Command="{Binding Close}" IsEnabled="{Binding CanEditConnection, Converter={converters:LogicalNot}}"/>
 			<Button Content="Clear" Margin="0,10,0,0" Command="{Binding Clear}"/>
+			<Separator Margin="10,20,10,10"/>
+			<Label Content="Topic:"/>
+			<TextBox Text="{Binding SelectedTopic, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding Connected}" 
+					 ToolTip="Topic to publish to." />
+			<Label Content="Content:"/>
+			<TextBox Text="{Binding SelectedContent, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding Connected}" 
+					 ToolTip="Content to publish." />
+			<Label Content="Quality of Service:"/>
+			<ComboBox SelectedIndex="{Binding QoS, Converter={converters:QosToInt}}" IsEnabled="{Binding Connected}">
+				<ComboBoxItem Content="At most once"/>
+				<ComboBoxItem Content="At least once"/>
+				<ComboBoxItem Content="Exactly once"/>
+			</ComboBox>
+			<CheckBox IsChecked="{Binding Retain}" IsEnabled="{Binding Connected}" Content="Retain content." Margin="0,10,0,0"/>
+			<Button Content="Publish" Margin="0,10,0,0" Command="{Binding Publish}" IsEnabled="{Binding Connected}"/>
 		</StackPanel>
 		<GridSplitter Grid.Row="0" Grid.Column="1" HorizontalAlignment="Stretch"/>
-		<TreeView x:Name="TopicTree" MinWidth="200" DockPanel.Dock="Left" Grid.Row="0" Grid.Column="2" ItemsSource="{Binding RootTopics}">
+		<TreeView x:Name="TopicTree" MinWidth="200" DockPanel.Dock="Left" Grid.Row="0" Grid.Column="2" ItemsSource="{Binding RootTopics}"
+				  ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto" Padding="0,0,10,0" 
+				  SelectedItemChanged="TopicTree_SelectedItemChanged">
 			<TreeView.ItemTemplate>
 				<HierarchicalDataTemplate ItemsSource="{Binding Items}">
 					<TextBlock Text="{Binding LocalName}"/>
