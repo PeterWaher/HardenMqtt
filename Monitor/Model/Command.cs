@@ -81,7 +81,7 @@ namespace Monitor.Model
 		/// </summary>
 		public void Changed()
 		{
-			Application.Current.Dispatcher.Invoke(() =>
+			Application.Current?.Dispatcher.Invoke(() =>
 			{
 				try
 				{

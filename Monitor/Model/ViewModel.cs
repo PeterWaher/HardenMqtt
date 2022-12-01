@@ -28,7 +28,7 @@ namespace Monitor.Model
 		/// <param name="PropertyName">Name of property that has changed.</param>
 		public void OnPropertyChanged(string PropertyName)
 		{
-			Application.Current.Dispatcher.Invoke(() =>
+			Application.Current?.Dispatcher.Invoke(() =>
 			{
 				try
 				{
