@@ -36,6 +36,85 @@ This repository consists of the following projects. They are developed in C#.
 | [Troll](Troll)     | A command-line app that spies on communication and tries to prohibit or alter information sent by sensors connected on the MQTT broker. Run this on the same broker as the sensor and display applications, to make it difficult for them to operate. |
 | [Pairing](Pairing) | A class library that helps with the task of pairing two devices securely, over MQTT. |
 
+### Sensor
+
+The [Sensor](Sensor) project gets weather information from a location of your choice, using the Open Weather Map API. Following
+is the process When starting the application:
+
+1. First, it will first ask you for a Device ID. This ID is used in all event logging and pairing communication, to help you
+identify the different actors.
+2. Private and public keys are loaded, or generated.
+3. The it asks your for connection details to an MQTT broker. All information you provide will be persisted. You only have to
+provide it once.
+4. A Open Weather Map API key and location to use. You can [get an API key](https://openweathermap.org/api) for free.
+5. Once information has been provided, the program will read the weather once a minute and publish it on the MQTT broker.
+6. Once sampling has begin, pairing is commenced, if pairing with a display has not been performed earlier. Pairing allows the
+sensor to send information confidentially to a specified recipient, without others being able to detect what information has
+been sent. Pairing is done securely over MQTT using `EdDSA`.
+7. The main loop simply waits for you to press `CTRL+Z` to quit the application.
+
+The following topics will be used by the sensor, on the MQTT broker you've selected:
+
+| Topic                                 | Description |
+|:--------------------------------------|:------------|
+| `HardenMqtt/Events`                   | Events will be logged to this topic, as well as to the console screen, so you can follow what happens with all applications connected to the broker. |
+| `HardenMqtt/Unsecured/Unstructured/+` | Weather information will be published in an unstructured manner to a series of topics, one field per topic, using this topic pattern. |
+| `HardenMqtt/Unsecured/Structured`     | The information will also be published to this topic, in the form of a JSON object. |
+| `HardenMqtt/Unsecured/Interoperable`  | A more interoperable, loosely coupled XML format containing the weather information will be published to this topic. |
+| `HardenMqtt/Secured/Public`           | A cryptographically signed version of the interoperable XML format will be published to this topic. It allows the recipient to make sure the integrity of the information is kept intact, as well as assuring the correct origin of the information. |
+| `HardenMqtt/Secured/Confidential`     | An encrypted version of the cryptographically signed interoperable XML format will be published to this topic. Symmetric key used for encryption is derived using `EdDSA`, and by secure pairing between a sensor and a display. |
+| `HardenMqtt/Pairing`                  | All pairing of sensors with their corresponding displays is done using over this topic. |
+
+### Display
+
+The [Display](Display) project gets information from the [Sensor](Sensor) and displays it to the user. The goal of the experiment,
+is to highlight different methods of transport of information in MQTT, and their corresponding vulnerabilities. As you troll the
+communication, you can see how it affects (or does not affect) what is presented on the display. When starting the application,
+the following sequence of events occurs:
+
+1. Application will ask you for a Device ID. This ID is used in all event logging and pairing communication, to help you
+identify the different actors.
+2. Private and public keys are loaded, or generated.
+3. The it asks your for connection details to an MQTT broker. All information you provide will be persisted. You only have to
+provide it once.
+4. Pairing is then commenced, if pairing with a sensor has not been performed earlier. Pairing allows the
+display to decrypt information sent by the sensor. Pairing is done securely over MQTT using `EdDSA`.
+5. Subscribing to different topics is then performed, in accordance with what information you want to display.
+6. The main loop simply waits for you to press `CTRL+Z` to quit the application.
+
+You switch mode in the display application, by pressing the `1` to `5` keys, or the `F1` to `F5` keys, as follows:
+
+| Key         | Page                      |
+|:------------|:--------------------------|
+| `1` or `F1` | Unstructured information  |
+| `2` or `F2` | Structured information    |
+| `3` or `F3` | Interoperable information |
+| `4` or `F4` | Signed information        |
+| `5` or `F5` | Confidential information  |
+
+### Troll
+
+The [Troll](Troll) application listens to communication performed on the broker, and tries to disrupt it, to highlight some of
+the vulnerabilities that exist inherent in MQTT. Most of these vulnerabilities are based on the following principles:
+
+* MQTT does not provide you with information about who published information.
+* MQTT does not provide a presentation layer, or information about encoding of content. It is up to the recipient to figure out
+how binary information should be decoded.
+* You can send very large messages, depleting resources or effectively making communication difficult or impossible for devices 
+with intermittant networks.
+* You can subscribe to very large subtrees or the entire topic tree, giving you broad access to information communicated.
+* Authentication and Authorization in MQTT is done out-of-band, by operators of the broker, and not negotiated between the
+participants of the communication.
+
+To resolve these vulnerabilities (some of which cannot be resolved efficiently by the participants themselves), special care has
+to be taked. The purpose of the repository is to highlight how these things can be resolved, and the application be hardened.
+
+**Note**: The [Troll](Troll) application can be used as a testing tool, to make sure applications that use MQTT are made
+resilient. Please feel free to extend the application to include more ways to troll participants in the network. Note however,
+that only *responsible use* is recommended and encouraged. Any malicious use is discouraged and should be desisted.
+
+### Monitor
+
 For the Teacher
 -----------------
 
