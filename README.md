@@ -36,7 +36,7 @@ This repository consists of the following projects. They are developed in C#.
 | [Troll](Troll)     | A command-line app that spies on communication and tries to prohibit or alter information sent by sensors connected on the MQTT broker. Run this on the same broker as the sensor and display applications, to make it difficult for them to operate. |
 | [Pairing](Pairing) | A class library that helps with the task of pairing two devices securely, over MQTT. |
 
-### Sensor ![Icon](Sensor/Icons8-Windows-8-Industry-Electrical-Sensor.ico)
+### Sensor ![Icon](Sensor/Icons8-Windows-8-Industry-Electrical-Sensor.ico 32 32)
 
 The [Sensor](Sensor) project gets weather information from a location of your choice, using the Open Weather Map API. Following
 is the process When starting the application:
