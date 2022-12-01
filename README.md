@@ -36,7 +36,7 @@ This repository consists of the following projects. They are developed in C#.
 | [Troll](Troll)     | A command-line app that spies on communication and tries to prohibit or alter information sent by sensors connected on the MQTT broker. Run this on the same broker as the sensor and display applications, to make it difficult for them to operate. |
 | [Pairing](Pairing) | A class library that helps with the task of pairing two devices securely, over MQTT. |
 
-### Sensor <img src="Sensor/Icons8-Windows-8-Industry-Electrical-Sensor.ico" width="32" height="32"/>
+### Sensor <img src="Sensor/Icons8-Windows-8-Industry-Electrical-Sensor.ico" width="24" height="24"/>
 
 The [Sensor](Sensor) project gets weather information from a location of your choice, using the Open Weather Map API. Following
 is the process When starting the application:
@@ -65,7 +65,7 @@ The following topics will be used by the sensor, on the MQTT broker you've selec
 | `HardenMqtt/Secured/Confidential`     | An encrypted version of the cryptographically signed interoperable XML format will be published to this topic. Symmetric key used for encryption is derived using `EdDSA`, and by secure pairing between a sensor and a display. |
 | `HardenMqtt/Pairing`                  | All pairing of sensors with their corresponding displays is done using over this topic. |
 
-### Display
+### Display <img src="Display/Iconsmind-Outline-Monitor-4.ico" width="24" height="24"/>
 
 The [Display](Display) project gets information from the [Sensor](Sensor) and displays it to the user. The goal of the experiment,
 is to highlight different methods of transport of information in MQTT, and their corresponding vulnerabilities. As you troll the
@@ -92,7 +92,7 @@ You switch mode in the display application, by pressing the `1` to `5` keys, or 
 | `4` or `F4` | Signed information        |
 | `5` or `F5` | Confidential information  |
 
-### Troll
+### Troll <img src="Troll/Martin-Berube-Character-Troll" width="24" height="24"/>
 
 The [Troll](Troll) application listens to communication performed on the broker, and tries to disrupt it, to highlight some of
 the vulnerabilities that exist inherent in MQTT. Most of these vulnerabilities are based on the following principles:
