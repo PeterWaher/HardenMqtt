@@ -1,17 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 
 namespace Monitor
 {
@@ -23,21 +11,12 @@ namespace Monitor
 		public MainWindow()
 		{
 			InitializeComponent();
+			this.DataContext = new MqttViewModel();
 		}
 
-		private void ConnectButton_Click(object sender, RoutedEventArgs e)
+		private void PasswordBox_PasswordChanged(object sender, RoutedEventArgs e)
 		{
-
-		}
-
-		private void CloseButton_Click(object sender, RoutedEventArgs e)
-		{
-
-		}
-
-		private void ClearButton_Click(object sender, RoutedEventArgs e)
-		{
-
+			((MqttViewModel)this.DataContext).Password = ((PasswordBox)sender).Password;
 		}
 	}
 }
