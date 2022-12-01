@@ -92,7 +92,7 @@ You switch mode in the display application, by pressing the `1` to `5` keys, or 
 | `4` or `F4` | Signed information        |
 | `5` or `F5` | Confidential information  |
 
-### Troll <img src="Troll/Martin-Berube-Character-Troll" width="24" height="24"/>
+### Troll <img src="Troll/Martin-Berube-Character-Troll.ico" width="24" height="24"/>
 
 The [Troll](Troll) application listens to communication performed on the broker, and tries to disrupt it, to highlight some of
 the vulnerabilities that exist inherent in MQTT. Most of these vulnerabilities are based on the following principles:
