@@ -21,8 +21,8 @@ using `EdDSA` and `SHA3-256`. These shared secrets are then used by a symmetric 
 never transmitted, they can be used to securely to encrypt the content being communicated. 
 
 To achieve this level of encryption, pairing of devices and sensors have to be performed. This is also done publicly, but
-securely over MQTT, highlighting the fact that malicious users can hijack the pairing process as well, if able to. Public key
-cryptography and signatures are vital for the pairing process to be secured.
+securely over MQTT, highlighting the fact that malicious users can have access to the pairing process as well, if able to. 
+Public key cryptography and signatures are vital for the pairing process to be secured.
 
 Projects
 ---------
@@ -112,6 +112,47 @@ to be taked. The purpose of the repository is to highlight how these things can 
 **Note**: The [Troll](Troll) application can be used as a testing tool, to make sure applications that use MQTT are made
 resilient. Please feel free to extend the application to include more ways to troll participants in the network. Note however,
 that only *responsible use* is recommended and encouraged. Any malicious use is discouraged and should be desisted.
+
+#### Level of Trolling
+
+There's a constant named `Trolliness` in the code. Alter this constant, to change the amount of trolling the application
+performs.
+
+```
+const int Trolliness = 3;   // 1=maximum. Higher values decrease probability of content being altered.
+```
+
+#### Methods
+
+While trolling the MQTT communication, output is performed on the console screen, in the form of characters. The following
+table lists the characters that can be output, and what they represent. A space character is output, when an incoming message
+is detected to have been sent by the troll application itself. It is an acknowledgement that the trolled message has been
+successfully delivered.
+
+| Character | Description                |
+|:---------:|:---------------------------|
+| `h`       | Halving                    |
+| `d`       | Doubling                   |
+| `n`       | Negating                   |
+| `r`       | Randomizing                |
+| `s`       | Replace with a string      |
+| `f`       | Format change              |
+| `y`       | Year change                |
+| `m`       | Month change               |
+| `D`       | Day change                 |
+| `t`       | Hour change                |
+| `i`       | Minute change              |
+| `S`       | Second change              |
+| `c`       | schema changed             |
+| `N`       | Host Name changed          |
+| `u`       | Path in Url changed        |
+| `o`       | JSON Object changed        |
+| `a`       | JSON Array changed         |
+| `x`       | XML changed                |
+| `k`       | 1 kB of random data sent   |
+| `M`       | 1 MB of random data sent   |
+| `H`       | 16 MB of random data sent  |
+| `G`       | 192 MB of random data sent |
 
 ### Monitor
 
