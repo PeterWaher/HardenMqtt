@@ -381,8 +381,13 @@ namespace Display
 						try
 						{
 							Current = DateTime.Now;
+
+							int? RedrawMenu;
+
 							if (Current.Subtract(Last).TotalSeconds > 5)
-								ShowMenu(DisplayMode, RowPerField);
+								RedrawMenu = DisplayMode;
+							else
+								RedrawMenu = null;
 
 							Last = Current;
 
@@ -394,17 +399,17 @@ namespace Display
 									{
 										case "Unstructured":        // Unstructured reception (unsecured)
 											if (DisplayMode == 1)
-												UnstructuredDataReceived(e.Topic, e.Data, RowPerField);
+												UnstructuredDataReceived(e.Topic, e.Data, RedrawMenu, RowPerField);
 											break;
 
 										case "Structured":          // Structured reception (unsecured)
 											if (DisplayMode == 2)
-												StructuredDataReceived(e.Data, RowPerField);
+												StructuredDataReceived(e.Data, RedrawMenu, RowPerField);
 											break;
 
 										case "Interoperable":       // Interoperable reception (unsecured)
 											if (DisplayMode == 3)
-												InteroperableDataReceived(e.Data, RowPerField);
+												InteroperableDataReceived(e.Data, RedrawMenu, RowPerField);
 											break;
 									}
 								}
@@ -417,12 +422,12 @@ namespace Display
 									{
 										case "Public":              // Interoperable, signed, public reception (secured)
 											if (DisplayMode == 4)
-												InteroperableSignedPublicDataReceived(e.Data, Cipher, PairedToKeyBin, RowPerField);
+												InteroperableSignedPublicDataReceived(e.Data, Cipher, PairedToKeyBin, RedrawMenu, RowPerField);
 											break;
 
 										case "Confidential":        // Interoperable, signed, confidential reception (secured)
 											if (DisplayMode == 5)
-												InteroperableConfidentialDataReceived(e.Data, Cipher, PairedToKeyBin, RowPerField);
+												InteroperableConfidentialDataReceived(e.Data, Cipher, PairedToKeyBin, RedrawMenu, RowPerField);
 											break;
 									}
 								}
@@ -661,8 +666,12 @@ namespace Display
 			}
 		}
 
-		private static void UnstructuredDataReceived(string Topic, byte[] Data, Dictionary<string, int> RowPerField)
+		private static void UnstructuredDataReceived(string Topic, byte[] Data, int? RedrawMenu,
+			Dictionary<string, int> RowPerField)
 		{
+			if (RedrawMenu.HasValue)
+				ShowMenu(RedrawMenu.Value, RowPerField);
+
 			int i = Topic.LastIndexOf('/');
 			if (i > 0)
 				Topic = Topic[(i + 1)..];
@@ -670,10 +679,13 @@ namespace Display
 			PrintField(Topic, Encoding.UTF8.GetString(Data), RowPerField);
 		}
 
-		private static void StructuredDataReceived(byte[] Data, Dictionary<string, int> RowPerField)
+		private static void StructuredDataReceived(byte[] Data, int? RedrawMenu, Dictionary<string, int> RowPerField)
 		{
 			if (Data.Length > 65536)
 				return;
+
+			if (RedrawMenu.HasValue)
+				ShowMenu(RedrawMenu.Value, RowPerField);
 
 			string Json = Encoding.UTF8.GetString(Data);
 			if (JSON.Parse(Json) is Dictionary<string, object> Parsed)
@@ -683,11 +695,14 @@ namespace Display
 			}
 		}
 
-		private static void InteroperableDataReceived(byte[] Data, Dictionary<string, int> RowPerField)
+		private static void InteroperableDataReceived(byte[] Data, int? RedrawMenu, Dictionary<string, int> RowPerField)
 		{
 			SensorData SensorData = ParseSensorData(Data);
 			if (SensorData is null)
 				return;
+
+			if (RedrawMenu.HasValue)
+				ShowMenu(RedrawMenu.Value, RowPerField);
 
 			foreach (Field Field in SensorData.Fields)
 				PrintField(Field.Name, Field.ValueString, RowPerField);
@@ -710,11 +725,14 @@ namespace Display
 		}
 
 		private static void InteroperableSignedPublicDataReceived(byte[] Data, EllipticCurve Cipher, byte[] RemotePublicKey,
-			Dictionary<string, int> RowPerField)
+			int? RedrawMenu, Dictionary<string, int> RowPerField)
 		{
 			SensorData SensorData = ParseSignedSensorData(Data, Cipher, RemotePublicKey);
 			if (SensorData is null)
 				return;
+
+			if (RedrawMenu.HasValue)
+				ShowMenu(RedrawMenu.Value, RowPerField);
 
 			foreach (Field Field in SensorData.Fields)
 				PrintField(Field.Name, Field.ValueString, RowPerField);
@@ -766,7 +784,7 @@ namespace Display
 		}
 
 		private static void InteroperableConfidentialDataReceived(byte[] Data, EllipticCurve Cipher, byte[] RemotePublicKey,
-			Dictionary<string, int> RowPerField)
+			int? RedrawMenu, Dictionary<string, int> RowPerField)
 		{
 			int c = Data.Length;
 			if (c <= 32)
@@ -802,6 +820,9 @@ namespace Display
 			SensorData SensorData = ParseSignedSensorData(Decrypted, Cipher, RemotePublicKey);
 			if (SensorData is null)
 				return;
+
+			if (RedrawMenu.HasValue)
+				ShowMenu(RedrawMenu.Value, RowPerField);
 
 			foreach (Field Field in SensorData.Fields)
 				PrintField(Field.Name, Field.ValueString, RowPerField);
