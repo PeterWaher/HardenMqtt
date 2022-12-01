@@ -11,7 +11,6 @@ using System;
 using Monitor.Model;
 using Waher.Events.Files;
 using System.IO;
-using System.Reflection;
 
 namespace Monitor
 {
