@@ -1,8 +1,9 @@
 ﻿using System;
+using System.Windows;
 using System.Windows.Input;
 using Waher.Events;
 
-namespace Monitor.UI
+namespace Monitor.Model
 {
 	/// <summary>
 	/// Delegate for CanExecute method calls.
@@ -80,14 +81,17 @@ namespace Monitor.UI
 		/// </summary>
 		public void Changed()
 		{
-			try
+			Application.Current.Dispatcher.Invoke(() =>
 			{
-				this.CanExecuteChanged?.Invoke(this, EventArgs.Empty);
-			}
-			catch (Exception ex)
-			{
-				Log.Critical(ex);
-			}
+				try
+				{
+					this.CanExecuteChanged?.Invoke(this, EventArgs.Empty);
+				}
+				catch (Exception ex)
+				{
+					Log.Critical(ex);
+				}
+			});
 		}
 
 		/// <summary>

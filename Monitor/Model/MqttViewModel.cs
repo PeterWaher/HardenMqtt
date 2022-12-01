@@ -1,6 +1,7 @@
-﻿using Monitor.UI;
+﻿using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System;
-using System.ComponentModel;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Threading.Tasks;
 using System.Windows;
 using Waher.Events;
@@ -12,42 +13,52 @@ namespace Monitor.Model
 	/// <summary>
 	/// View model for the main window in the monitor app
 	/// </summary>
-	public class MqttViewModel : INotifyPropertyChanged, IDisposable
+	public class MqttViewModel : ViewModel, IDisposable
 	{
+		private readonly BindableProperty<string> host;
+		private readonly BindableProperty<int> port;
+		private readonly BindableProperty<bool> tls;
+		private readonly BindableProperty<bool> trustCertificate;
+		private readonly BindableProperty<string> userName;
+		private readonly BindableProperty<string> password;
+		private readonly BindableProperty<MqttState> state;
+		private readonly BindableProperty<string> lastTopic;
+		private readonly Dictionary<string, MqttTopic> topics = new Dictionary<string, MqttTopic>();
+		private readonly ObservableCollection<MqttTopic> rootTopics = new ObservableCollection<MqttTopic>();
 		private MqttClient mqtt;
-		private string host = string.Empty;
-		private int port = 8883;
-		private bool tls = true;
-		private bool trustCertificate = false;
-		private string userName = string.Empty;
-		private string password = string.Empty;
 
 		/// <summary>
 		/// View model for the main window in the monitor app
 		/// </summary>
-		private MqttViewModel()
+		public MqttViewModel()
+			: base()
 		{
+			this.host = new BindableProperty<string>(this, nameof(this.Host), string.Empty);
+			this.port = new BindableProperty<int>(this, nameof(this.Port), 8883);
+			this.tls = new BindableProperty<bool>(this, nameof(this.Tls), true);
+			this.trustCertificate = new BindableProperty<bool>(this, nameof(this.TrustCertificate), false);
+			this.userName = new BindableProperty<string>(this, nameof(this.UserName), string.Empty);
+			this.password = new BindableProperty<string>(this, nameof(this.Password), string.Empty);
+
+			this.state = new BindableProperty<MqttState>(this, nameof(this.State), MqttState.Offline);
+			this.lastTopic = new BindableProperty<string>(this, nameof(this.LastTopic), string.Empty);
+
 			this.Connect = new Command(this.ExecuteConnect);
 			this.Close = new Command(this.ExecuteClose);
 			this.Clear = new Command(this.ExecuteClear);
 		}
 
 		/// <summary>
-		/// Creates an instance of the view model.
+		/// Loads the view model
 		/// </summary>
-		/// <returns>Newly created view model.</returns>
-		public static async Task<MqttViewModel> Create()
+		public async Task Load()
 		{
-			MqttViewModel Result = new MqttViewModel();
-
-			Result.host = RuntimeSettings.Get("MQTT.Host", Result.host);
-			Result.port = (int)RuntimeSettings.Get("MQTT.Port", Result.port);
-			Result.tls = RuntimeSettings.Get("MQTT.Tls", Result.tls);
-			Result.userName = RuntimeSettings.Get("MQTT.UserName", Result.userName);
-			Result.password = RuntimeSettings.Get("MQTT.Password", Result.password);
-			Result.trustCertificate = RuntimeSettings.Get("MQTT.TrustServer", Result.trustCertificate);
-
-			return Result;
+			this.host.Value = await RuntimeSettings.GetAsync("MQTT.Host", this.host.Value);
+			this.port.Value = (int)await RuntimeSettings.GetAsync("MQTT.Port", this.port.Value);
+			this.tls.Value = await RuntimeSettings.GetAsync("MQTT.Tls", this.tls.Value);
+			this.userName.Value = await RuntimeSettings.GetAsync("MQTT.UserName", this.userName.Value);
+			this.password.Value = await RuntimeSettings.GetAsync("MQTT.Password", this.password.Value);
+			this.trustCertificate.Value = await RuntimeSettings.GetAsync("MQTT.TrustServer", this.trustCertificate.Value);
 		}
 
 		/// <summary>
@@ -55,12 +66,8 @@ namespace Monitor.Model
 		/// </summary>
 		public string Host
 		{
-			get => this.host;
-			set
-			{
-				this.host = value;
-				this.OnPropertyChanged(nameof(this.Host));
-			}
+			get => this.host.Value;
+			set => this.host.Value = value;
 		}
 
 		/// <summary>
@@ -68,12 +75,8 @@ namespace Monitor.Model
 		/// </summary>
 		public int Port
 		{
-			get => this.port;
-			set
-			{
-				this.port = value;
-				this.OnPropertyChanged(nameof(this.Port));
-			}
+			get => this.port.Value;
+			set => this.port.Value = value;
 		}
 
 		/// <summary>
@@ -81,12 +84,8 @@ namespace Monitor.Model
 		/// </summary>
 		public bool Tls
 		{
-			get => this.tls;
-			set
-			{
-				this.tls = value;
-				this.OnPropertyChanged(nameof(this.Tls));
-			}
+			get => this.tls.Value;
+			set => this.tls.Value = value;
 		}
 
 		/// <summary>
@@ -94,12 +93,8 @@ namespace Monitor.Model
 		/// </summary>
 		public bool TrustCertificate
 		{
-			get => this.trustCertificate;
-			set
-			{
-				this.trustCertificate = value;
-				this.OnPropertyChanged(nameof(this.TrustCertificate));
-			}
+			get => this.trustCertificate.Value;
+			set => this.trustCertificate.Value = value;
 		}
 
 		/// <summary>
@@ -107,12 +102,8 @@ namespace Monitor.Model
 		/// </summary>
 		public string UserName
 		{
-			get => this.userName;
-			set
-			{
-				this.userName = value;
-				this.OnPropertyChanged(nameof(this.UserName));
-			}
+			get => this.userName.Value;
+			set => this.userName.Value = value;
 		}
 
 		/// <summary>
@@ -120,23 +111,37 @@ namespace Monitor.Model
 		/// </summary>
 		public string Password
 		{
-			get => this.password;
-			set
-			{
-				this.password = value;
-				this.OnPropertyChanged(nameof(this.Password));
-			}
+			get => this.password.Value;
+			set => this.password.Value = value;
 		}
 
 		/// <summary>
-		/// Connection State
+		/// Current connection state
 		/// </summary>
-		public MqttState ConnectionState => this.mqtt?.State ?? MqttState.Offline;
+		public MqttState State
+		{
+			get => this.state.Value;
+			set => this.state.Value = value;
+		}
+
+		/// <summary>
+		/// Last topic received.
+		/// </summary>
+		public string LastTopic
+		{
+			get => this.lastTopic.Value;
+			set => this.lastTopic.Value = value;
+		}
 
 		/// <summary>
 		/// If the connection parameters can be edited.
 		/// </summary>
-		public bool CanEditConnection => this.ConnectionState == MqttState.Offline || this.ConnectionState == MqttState.Error;
+		public bool CanEditConnection => this.State == MqttState.Offline || this.State == MqttState.Error;
+
+		/// <summary>
+		/// Root topics
+		/// </summary>
+		public ObservableCollection<MqttTopic> RootTopics => this.rootTopics;
 
 		/// <summary>
 		/// Connect command
@@ -154,26 +159,6 @@ namespace Monitor.Model
 		public Command Clear { get; }
 
 		/// <summary>
-		/// Event raised when a property in the view model has changed
-		/// </summary>
-		public event PropertyChangedEventHandler PropertyChanged;
-
-		private void OnPropertyChanged(string PropertyName)
-		{
-			Application.Current.Dispatcher.Invoke(() =>
-			{
-				try
-				{
-					this.PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(PropertyName));
-				}
-				catch (Exception ex)
-				{
-					Log.Critical(ex);
-				}
-			});
-		}
-
-		/// <summary>
 		/// Connects to the broker.
 		/// </summary>
 		private void ExecuteConnect()
@@ -182,28 +167,15 @@ namespace Monitor.Model
 			{
 				this.mqtt?.Dispose();
 				this.mqtt = null;
+				this.State = MqttState.Offline;
 
 				this.mqtt = new MqttClient(this.Host, this.Port, this.Tls, this.UserName, this.Password)
 				{
 					TrustServer = this.TrustCertificate
 				};
 
-				this.mqtt.OnStateChanged += async (_, __) =>
-				{
-					this.OnPropertyChanged(nameof(this.ConnectionState));
-					this.OnPropertyChanged(nameof(this.CanEditConnection));
-					this.Connect.Changed();
-
-					if (this.mqtt.State == MqttState.Connected)
-					{
-						await RuntimeSettings.SetAsync("MQTT.Host", this.host);
-						await RuntimeSettings.SetAsync("MQTT.Port", this.port);
-						await RuntimeSettings.SetAsync("MQTT.Tls", this.tls);
-						await RuntimeSettings.SetAsync("MQTT.UserName", this.userName);
-						await RuntimeSettings.SetAsync("MQTT.Password", this.password);
-						await RuntimeSettings.SetAsync("MQTT.TrustServer", this.trustCertificate);
-					}
-				};
+				this.mqtt.OnStateChanged += this.Mqtt_OnStateChanged;
+				this.mqtt.OnContentReceived += this.Mqtt_OnContentReceived;
 
 				this.Connect.Changed();
 				this.Close.Changed();
@@ -212,10 +184,106 @@ namespace Monitor.Model
 			{
 				this.mqtt?.Dispose();
 				this.mqtt = null;
+				this.State = MqttState.Offline;
 
 				Log.Critical(ex);
 				MessageBox.Show(ex.Message);
 			}
+		}
+
+		private Task Mqtt_OnStateChanged(object Sender, MqttState NewState)
+		{
+			this.State = NewState;
+
+			this.OnPropertyChanged(nameof(this.CanEditConnection));
+			this.Connect.Changed();
+
+			if (NewState == MqttState.Connected)
+			{
+				Task.Run(async () =>
+				{
+					try
+					{
+						await RuntimeSettings.SetAsync("MQTT.Host", this.host.Value);
+						await RuntimeSettings.SetAsync("MQTT.Port", this.port.Value);
+						await RuntimeSettings.SetAsync("MQTT.Tls", this.tls.Value);
+						await RuntimeSettings.SetAsync("MQTT.UserName", this.userName.Value);
+						await RuntimeSettings.SetAsync("MQTT.Password", this.password.Value);
+						await RuntimeSettings.SetAsync("MQTT.TrustServer", this.trustCertificate.Value);
+
+						await this.mqtt.SUBSCRIBE("#");
+					}
+					catch (Exception ex)
+					{
+						Log.Critical(ex);
+					}
+				});
+			}
+
+			return Task.CompletedTask;
+		}
+
+		private Task Mqtt_OnContentReceived(object Sender, MqttContent Content)
+		{
+			this.LastTopic = Content.Topic;
+
+			Application.Current.Dispatcher.Invoke(() =>
+			{
+				try
+				{
+					if (!this.topics.TryGetValue(Content.Topic, out MqttTopic Topic))
+					{
+						string[] Parts = Content.Topic.Split('/');
+						MqttTopic Last = null;
+						string s = null;
+					
+						foreach (string Part in Parts)
+						{
+							if (s is null)
+								s = Part;
+							else
+								s += "/" + Part;
+					
+							if (!this.topics.TryGetValue(s, out Topic))
+							{
+								Topic = new MqttTopic(s);
+								this.topics[s] = Topic;
+
+								if (Last is null)
+									Insert(this.rootTopics, Topic);
+								else
+									Insert(Last.Items, Topic);
+							}
+
+							Last = Topic;
+						}
+					}
+				}
+				catch (Exception ex)
+				{
+					Log.Critical(ex);
+				}
+			});
+
+			return Task.CompletedTask;
+		}
+
+		private static void Insert<T>(ObservableCollection<T> Collection, T NewItem)
+			where T : IComparer<T>
+		{
+			int i, j, c = Collection.Count;
+
+			for (i = 0; i < c; i++)
+			{
+				j = NewItem.Compare(Collection[i], NewItem);
+				if (j > 0)
+					break;
+			}
+
+			if (i >= c)
+				Collection.Add(NewItem);
+			else
+				Collection.Insert(i, NewItem);
 		}
 
 		/// <summary>
@@ -225,6 +293,7 @@ namespace Monitor.Model
 		{
 			this.mqtt?.Dispose();
 			this.mqtt = null;
+			this.State = MqttState.Offline;
 
 			this.Connect.Changed();
 		}

@@ -7,7 +7,7 @@
         xmlns:converters="clr-namespace:Monitor.Converters"
 		DataContext="local:MqttViewModel"
         mc:Ignorable="d" Title="MQTT Monitor" Height="800" Width="1280"
-		Closing="Window_Closing">
+		Closing="Window_Closing" Activated="Window_Activated">
 	<Grid DockPanel.Dock="Top">
 		<Grid.ColumnDefinitions>
 			<ColumnDefinition Width="Auto"/>
@@ -38,14 +38,22 @@
 			<Button Content="Clear" Margin="0,10,0,0" Command="{Binding Clear}"/>
 		</StackPanel>
 		<GridSplitter Grid.Row="0" Grid.Column="1" HorizontalAlignment="Stretch"/>
-		<TreeView MinWidth="200" DockPanel.Dock="Left" Grid.Row="0" Grid.Column="2">
+		<TreeView x:Name="TopicTree" MinWidth="200" DockPanel.Dock="Left" Grid.Row="0" Grid.Column="2" ItemsSource="{Binding RootTopics}">
+			<TreeView.ItemTemplate>
+				<HierarchicalDataTemplate ItemsSource="{Binding Items}">
+					<TextBlock Text="{Binding LocalName}"/>
+				</HierarchicalDataTemplate>
+			</TreeView.ItemTemplate>
 		</TreeView>
 		<GridSplitter Grid.Row="0" Grid.Column="3" HorizontalAlignment="Stretch"/>
 		<ListView Grid.Row="0" Grid.Column="4">
 		</ListView>
 		<StatusBar Name="StatusBar" VerticalAlignment="Bottom" Grid.Column="0" Grid.Row="1" Grid.ColumnSpan="5">
-			<StatusBarItem Name="ConnectionStatus" HorizontalAlignment="Left">
-				<Label Content="{Binding ConnectionState}" />
+			<StatusBarItem HorizontalAlignment="Left">
+				<Label Content="{Binding State}" />
+			</StatusBarItem>
+			<StatusBarItem HorizontalAlignment="Left">
+				<Label Content="{Binding LastTopic}" />
 			</StatusBarItem>
 		</StatusBar>
 	</Grid>

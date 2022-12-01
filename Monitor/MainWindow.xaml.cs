@@ -9,6 +9,9 @@ using Waher.Runtime.Inventory;
 using System.Threading.Tasks;
 using System;
 using Monitor.Model;
+using Waher.Events.Files;
+using System.IO;
+using System.Reflection;
 
 namespace Monitor
 {
@@ -17,8 +20,9 @@ namespace Monitor
 	/// </summary>
 	public partial class MainWindow : Window
 	{
+		private readonly TaskCompletionSource<MqttViewModel> initialized = new TaskCompletionSource<MqttViewModel>();
 		private FilesProvider dbProvider = null;
-		private TaskCompletionSource<MqttViewModel> initialized = new TaskCompletionSource<MqttViewModel>();
+		private bool loaded = false;
 
 		public MainWindow()
 		{
@@ -43,7 +47,9 @@ namespace Monitor
 			try
 			{
 				// Setup database
+				Log.Register(new XmlFileEventSink("Events.xml", Path.Combine(Environment.CurrentDirectory, "Events", "Events.xml"), 7));
 				Log.Informational("Setting up database...");
+
 				dbProvider = await FilesProvider.CreateAsync("Database", "Default", 8192, 10000, 8192, Encoding.UTF8, 10000, true, false);
 				Database.Register(dbProvider);
 
@@ -53,12 +59,12 @@ namespace Monitor
 				// Starting internal modules
 				await Types.StartAllModules(60000);
 
-				this.initialized.TrySetResult(await MqttViewModel.Create());
+				this.initialized.TrySetResult(new MqttViewModel());
 			}
 			catch (Exception ex)
 			{
 				Log.Critical(ex);
-				this.initialized.TrySetResult(null);
+				this.initialized.TrySetException(ex);
 			}
 		}
 
@@ -68,8 +74,7 @@ namespace Monitor
 
 			(this.DataContext as IDisposable)?.Dispose();
 
-			if (!(this.dbProvider is null))
-				this.dbProvider.Flush().Wait();
+			this.dbProvider?.Flush().Wait();
 
 			Types.StopAllModules().Wait();
 			Log.Terminate();
@@ -78,6 +83,24 @@ namespace Monitor
 		private void PasswordBox_PasswordChanged(object sender, RoutedEventArgs e)
 		{
 			((MqttViewModel)this.DataContext).Password = ((PasswordBox)sender).Password;
+		}
+
+		private async void Window_Activated(object sender, EventArgs e)
+		{
+			if (!this.loaded)
+			{
+				this.loaded = true;
+
+				try
+				{
+					await ((MqttViewModel)this.DataContext).Load();
+				}
+				catch (Exception ex)
+				{
+					Log.Critical(ex);
+					MessageBox.Show(ex.Message);
+				}
+			}
 		}
 	}
 }
