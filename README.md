@@ -157,6 +157,11 @@ successfully delivered.
 
 ### Monitor
 
+The [Monitor](Monitor) application is a Windows application that allows the user to monitor MQTT communication in a Windows GUI. 
+It displays the topic tree, and content published on individual topics. It also allows the user to edit published content, and 
+publish it back to MQTT. It is a simple but effective tool that can be used during development and testing of MQTT-based
+applications.
+
 For the Teacher
 -----------------
 
