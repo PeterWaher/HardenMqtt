@@ -1,5 +1,4 @@
-﻿using Microsoft.CodeAnalysis.CSharp.Syntax;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Threading.Tasks;
@@ -236,14 +235,14 @@ namespace Monitor.Model
 						string[] Parts = Content.Topic.Split('/');
 						MqttTopic Last = null;
 						string s = null;
-					
+
 						foreach (string Part in Parts)
 						{
 							if (s is null)
 								s = Part;
 							else
 								s += "/" + Part;
-					
+
 							if (!this.topics.TryGetValue(s, out Topic))
 							{
 								Topic = new MqttTopic(s);
@@ -303,7 +302,8 @@ namespace Monitor.Model
 		/// </summary>
 		private void ExecuteClear()
 		{
-			// TODO
+			this.topics.Clear();
+			this.rootTopics.Clear();
 		}
 
 		/// <summary>
