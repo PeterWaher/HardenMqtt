@@ -66,6 +66,9 @@ The following topics will be used by the sensor, on the MQTT broker you've selec
 | `HardenMqtt/Secured/Confidential`     | An encrypted version of the cryptographically signed interoperable XML format will be published to this topic. Symmetric key used for encryption is derived using `EdDSA`, and by secure pairing between a sensor and a display. |
 | `HardenMqtt/Pairing`                  | All pairing of sensors with their corresponding displays is done using over this topic. |
 
+**Note**: Pressing any key (except `CTRL+Z`) when the sensor is in the main loop, will trigger a republishing of current sensor
+data to MQTT. This can be useful if you need to test something quickly, and do not want to wait for the next scheduled samling.
+
 ![Sensor Screen](Images/Sensor.png)
 
 ### Display <img src="Display/Iconsmind-Outline-Monitor-4.ico" width="24" height="24"/>
