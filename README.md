@@ -155,7 +155,7 @@ successfully delivered.
 | `H`       | 16 MB of random data sent  |
 | `G`       | 192 MB of random data sent |
 
-### Monitor
+### Monitor <img src="Monitor/Iconsmind-Outline-Spy.ico" width="24" height="24"/>
 
 The [Monitor](Monitor) application is a Windows application that allows the user to monitor MQTT communication in a Windows GUI. 
 It displays the topic tree, and content published on individual topics. It also allows the user to edit published content, and 

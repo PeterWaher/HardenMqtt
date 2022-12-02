@@ -4,7 +4,12 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>netcoreapp3.1</TargetFramework>
     <UseWPF>true</UseWPF>
+    <ApplicationIcon>Iconsmind-Outline-Spy.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="Iconsmind-Outline-Spy.ico" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Waher.Content" Version="2.4.7" />
