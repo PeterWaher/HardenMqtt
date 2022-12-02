@@ -37,6 +37,9 @@ This repository consists of the following projects. They are developed in C#.
 | [Pairing](Pairing) | A class library that helps with the task of pairing two devices securely, over MQTT. |
 | [Monitor](Monitor) | A Windows application (WPF) that helps you monitor communication on an MQTT broker in real-time. |
 
+The [Sensor](Sensor), [Display](Display) and [Troll](Troll) are .NET Core command-line applications, and can run on any platform
+or operating system supporting .NET Core. The [Monitor](Monitor) is a .NET Core WPF application.
+
 ### Sensor <img src="Sensor/Icons8-Windows-8-Industry-Electrical-Sensor.ico" width="24" height="24"/>
 
 The [Sensor](Sensor) project gets weather information from a location of your choice, using the Open Weather Map API. Following
