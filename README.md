@@ -66,6 +66,8 @@ The following topics will be used by the sensor, on the MQTT broker you've selec
 | `HardenMqtt/Secured/Confidential`     | An encrypted version of the cryptographically signed interoperable XML format will be published to this topic. Symmetric key used for encryption is derived using `EdDSA`, and by secure pairing between a sensor and a display. |
 | `HardenMqtt/Pairing`                  | All pairing of sensors with their corresponding displays is done using over this topic. |
 
+![Sensor Screen](Images/Sensor.png)
+
 ### Display <img src="Display/Iconsmind-Outline-Monitor-4.ico" width="24" height="24"/>
 
 The [Display](Display) project gets information from the [Sensor](Sensor) and displays it to the user. The goal of the experiment,
@@ -93,6 +95,8 @@ You switch mode in the display application, by pressing the `1` to `5` keys, or 
 | `4` or `F4` | Signed information        |
 | `5` or `F5` | Confidential information  |
 
+![Display Screen](Images/Display.png)
+
 ### Troll <img src="Troll/Martin-Berube-Character-Troll.ico" width="24" height="24"/>
 
 The [Troll](Troll) application listens to communication performed on the broker, and tries to disrupt it, to highlight some of
@@ -113,6 +117,8 @@ to be taked. The purpose of the repository is to highlight how these things can 
 **Note**: The [Troll](Troll) application can be used as a testing tool, to make sure applications that use MQTT are made
 resilient. Please feel free to extend the application to include more ways to troll participants in the network. Note however,
 that only *responsible use* is recommended and encouraged. Any malicious use is discouraged and should be desisted.
+
+![Troll Screen](Images/Troll.png)
 
 #### Level of Trolling
 
@@ -161,6 +167,8 @@ The [Monitor](Monitor) application is a Windows application that allows the user
 It displays the topic tree, and content published on individual topics. It also allows the user to edit published content, and 
 publish it back to MQTT. It is a simple but effective tool that can be used during development and testing of MQTT-based
 applications.
+
+![Monitor Screen](Images/Monitor.png)
 
 For the Teacher
 -----------------
