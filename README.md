@@ -1,7 +1,7 @@
 ﻿Harden MQTT
 ================
 
-This project is aimed at students learning IoT communication over MQTT, as well as teachers, and how to harden their 
+This project is aimed at students learning IoT communication over MQTT, as well as teachers, helping them to harden their 
 implementations so they avoid most common mistakes and vulnerabilities when using MQTT. It shows how to use MQTT to transmit
 sensor data in the following ways:
 
@@ -14,7 +14,7 @@ sensor data in the following ways:
 	* Signed and encrypted
 
 Signatures are based on public key cryptography, where public keys are transmitted over MQTT as well, and private keys are used
-to sign information being published. The Twister Edwards Curve `Ed25519` is used in these examples.
+to sign information being published. The Twisted Edwards Curve `Ed25519` is used in these examples.
 
 For encryption to be done, a hybrid cipher is used, where the asymetric ciphers (`Ed25519`) are used to derive shared secrets
 using `EdDSA` and `SHA3-256`. These shared secrets are then used by a symmetric cipher (`AES-256`). As these shared secrets are 
@@ -23,6 +23,11 @@ never transmitted, they can be used to securely to encrypt the content being com
 To achieve this level of encryption, pairing of devices and sensors have to be performed. This is also done publicly, but
 securely over MQTT, highlighting the fact that malicious users can have access to the pairing process as well, if able to. 
 Public key cryptography and signatures are vital for the pairing process to be secured.
+
+**Note**: The curve `Ed25519` with the corresponding `EdDSA` algorithm can be easily replaced by any other Elliptic Curve 
+or asymetric cipher with a corresponding algorithm for signing and generating shared keys. Likewise, the `AES-256` cipher can
+be easily replaced by any other symmetric cipher, as soon as both parties have agreed on ciphers to be used. Cipher negotiation
+is not included in the Pairing process however, but can be easily added.
 
 Projects
 ---------
