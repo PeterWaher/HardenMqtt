@@ -18,7 +18,15 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Documentation", "Documentat
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Pairing", "Pairing\Pairing.csproj", "{E130947E-2FF4-4D2D-A96C-DE37A760C116}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Monitor", "Monitor\Monitor.csproj", "{EC13EF3F-5912-46A8-8EBC-4D6CFC617531}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Monitor", "Monitor\Monitor.csproj", "{EC13EF3F-5912-46A8-8EBC-4D6CFC617531}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Images", "Images", "{2E45DD1C-E3CA-4CEE-98A1-C1BC427680A0}"
+	ProjectSection(SolutionItems) = preProject
+		Images\Display.png = Images\Display.png
+		Images\Monitor.png = Images\Monitor.png
+		Images\Sensor.png = Images\Sensor.png
+		Images\Troll.png = Images\Troll.png
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
