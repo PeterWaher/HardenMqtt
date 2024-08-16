@@ -324,7 +324,7 @@ namespace Sensor
 					}
 					catch (Exception ex)
 					{
-						Log.Critical(ex, DeviceID);
+						Log.Exception(ex, DeviceID);
 					}
 				}, null, 1000, 60000);  // First readout in 1s, then read every 1 minute.
 

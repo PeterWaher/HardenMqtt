@@ -5,7 +5,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Waher.Content" Version="2.6.10" />
+    <PackageReference Include="Waher.Content" Version="2.6.11" />
+    <PackageReference Include="Waher.Events" Version="1.2.0" />
     <PackageReference Include="Waher.Networking.MQTT" Version="2.0.4" />
     <PackageReference Include="Waher.Security.EllipticCurves" Version="1.0.9" />
   </ItemGroup>

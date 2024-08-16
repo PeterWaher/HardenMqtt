@@ -12,21 +12,21 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Waher.Content" Version="2.6.10" />
-    <PackageReference Include="Waher.Events" Version="1.1.3" />
-    <PackageReference Include="Waher.Events.Console" Version="1.1.2" />
-    <PackageReference Include="Waher.Events.MQTT" Version="1.2.5" />
+    <PackageReference Include="Waher.Content" Version="2.6.11" />
+    <PackageReference Include="Waher.Events" Version="1.2.0" />
+    <PackageReference Include="Waher.Events.Console" Version="1.1.3" />
+    <PackageReference Include="Waher.Events.MQTT" Version="1.2.6" />
     <PackageReference Include="Waher.Networking.MQTT" Version="2.0.4" />
-    <PackageReference Include="Waher.Networking.XMPP.Sensor" Version="2.1.5" />
+    <PackageReference Include="Waher.Networking.XMPP.Sensor" Version="3.0.0" />
     <PackageReference Include="Waher.Persistence" Version="1.10.1" />
     <PackageReference Include="Waher.Persistence.Files" Version="1.11.7" />
     <PackageReference Include="Waher.Runtime.Inventory" Version="1.1.5" />
     <PackageReference Include="Waher.Runtime.Inventory.Loader" Version="1.0.9" />
-    <PackageReference Include="Waher.Runtime.Settings" Version="1.1.0" />
+    <PackageReference Include="Waher.Runtime.Settings" Version="1.1.1" />
     <PackageReference Include="Waher.Security" Version="1.0.8" />
     <PackageReference Include="Waher.Security.EllipticCurves" Version="1.0.9" />
     <PackageReference Include="Waher.Security.SHA3" Version="1.0.3" />
-    <PackageReference Include="Waher.Things" Version="1.4.2" />
+    <PackageReference Include="Waher.Things" Version="2.0.0" />
   </ItemGroup>
 
   <ItemGroup>

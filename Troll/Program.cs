@@ -262,7 +262,7 @@ namespace Troll
 					}
 					catch (Exception ex)
 					{
-						Log.Critical(ex, DeviceID);
+						Log.Exception(ex, DeviceID);
 					}
 				}
 

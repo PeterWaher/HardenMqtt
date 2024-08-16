@@ -63,7 +63,7 @@ namespace Monitor
 			}
 			catch (Exception ex)
 			{
-				Log.Critical(ex);
+				Log.Exception(ex);
 				this.initialized.TrySetException(ex);
 			}
 		}
@@ -97,7 +97,7 @@ namespace Monitor
 				}
 				catch (Exception ex)
 				{
-					Log.Critical(ex);
+					Log.Exception(ex);
 					MessageBox.Show(ex.Message);
 				}
 			}

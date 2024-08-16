@@ -261,7 +261,7 @@ namespace Monitor.Model
 				this.mqtt = null;
 				this.State = MqttState.Offline;
 
-				Log.Critical(ex);
+				Log.Exception(ex);
 				MessageBox.Show(ex.Message);
 			}
 		}
@@ -290,7 +290,7 @@ namespace Monitor.Model
 					}
 					catch (Exception ex)
 					{
-						Log.Critical(ex);
+						Log.Exception(ex);
 					}
 				});
 			}
@@ -339,7 +339,7 @@ namespace Monitor.Model
 				}
 				catch (Exception ex)
 				{
-					Log.Critical(ex);
+					Log.Exception(ex);
 				}
 			});
 
@@ -398,7 +398,7 @@ namespace Monitor.Model
 				}
 				catch (Exception ex)
 				{
-					Log.Critical(ex);
+					Log.Exception(ex);
 					MessageBox.Show(ex.Message);
 				}
 			}

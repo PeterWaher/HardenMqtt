@@ -89,7 +89,7 @@ namespace Monitor.Model
 				}
 				catch (Exception ex)
 				{
-					Log.Critical(ex);
+					Log.Exception(ex);
 				}
 			});
 		}
@@ -112,7 +112,7 @@ namespace Monitor.Model
 			}
 			catch (Exception ex)
 			{
-				Log.Critical(ex);
+				Log.Exception(ex);
 				return false;
 			}
 		}
@@ -129,7 +129,7 @@ namespace Monitor.Model
 			}
 			catch (Exception ex)
 			{
-				Log.Critical(ex);
+				Log.Exception(ex);
 			}
 		}
 	}
