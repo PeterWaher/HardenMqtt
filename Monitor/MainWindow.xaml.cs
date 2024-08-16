@@ -46,6 +46,13 @@ namespace Monitor
 		{
 			try
 			{
+				// Exception types that are logged with an elevated type.
+				Log.RegisterAlertExceptionType(true,
+					typeof(OutOfMemoryException),
+					typeof(StackOverflowException),
+					typeof(AccessViolationException),
+					typeof(InsufficientMemoryException));
+
 				// Setup database
 				Log.Register(new XmlFileEventSink("Events.xml", Path.Combine(Environment.CurrentDirectory, "Events", "Events.xml"), 7));
 				Log.Informational("Setting up database...");

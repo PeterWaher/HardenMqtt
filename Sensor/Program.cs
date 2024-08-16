@@ -53,6 +53,13 @@ namespace Sensor
 				// This is important for tasks such as data persistence, for example.
 				TypesLoader.Initialize();
 
+				// Exception types that are logged with an elevated type.
+				Log.RegisterAlertExceptionType(true,
+					typeof(OutOfMemoryException),
+					typeof(StackOverflowException),
+					typeof(AccessViolationException),
+					typeof(InsufficientMemoryException));
+
 				// Setup Event Output to Console window
 				Log.Register(new ConsoleEventSink());
 				Log.Informational("Sensor application starting...");
