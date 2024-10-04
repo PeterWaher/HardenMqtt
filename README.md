@@ -123,7 +123,7 @@ with intermittant networks.
 participants of the communication.
 
 To resolve these vulnerabilities (some of which cannot be resolved efficiently by the participants themselves), special care has
-to be taked. The purpose of the repository is to highlight how these things can be resolved, and the application be hardened.
+to be taken. The purpose of the repository is to highlight how these things can be resolved, and the application be hardened.
 
 **Note**: The [Troll](Troll) application can be used as a testing tool, to make sure applications that use MQTT are made
 resilient. Please feel free to extend the application to include more ways to troll participants in the network. Note however,
