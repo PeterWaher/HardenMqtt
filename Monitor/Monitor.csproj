@@ -12,15 +12,15 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Waher.Content" Version="2.6.12" />
+    <PackageReference Include="Waher.Content" Version="2.6.13" />
     <PackageReference Include="Waher.Content.Xml" Version="2.3.2" />
     <PackageReference Include="Waher.Events" Version="1.2.1" />
     <PackageReference Include="Waher.Events.Files" Version="1.1.6" />
     <PackageReference Include="Waher.Networking" Version="2.3.0" />
-    <PackageReference Include="Waher.Networking.MQTT" Version="2.0.5" />
-    <PackageReference Include="Waher.Persistence" Version="1.10.2" />
-    <PackageReference Include="Waher.Persistence.Files" Version="1.11.8" />
-    <PackageReference Include="Waher.Runtime.Inventory" Version="1.1.6" />
+    <PackageReference Include="Waher.Networking.MQTT" Version="2.0.7" />
+    <PackageReference Include="Waher.Persistence" Version="1.12.0" />
+    <PackageReference Include="Waher.Persistence.Files" Version="1.12.0" />
+    <PackageReference Include="Waher.Runtime.Inventory" Version="1.1.7" />
     <PackageReference Include="Waher.Runtime.Inventory.Loader" Version="1.0.10" />
     <PackageReference Include="Waher.Runtime.Queue" Version="1.1.0" />
     <PackageReference Include="Waher.Runtime.Settings" Version="1.1.1" />
