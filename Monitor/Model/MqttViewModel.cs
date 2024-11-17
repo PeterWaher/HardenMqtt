@@ -28,9 +28,9 @@ namespace Monitor.Model
 		private readonly BindableProperty<string> selectedContent;
 		private readonly BindableProperty<MqttQualityOfService> qos;
 		private readonly BindableProperty<bool> retain;
-		private readonly Dictionary<string, MqttTopic> topics = new Dictionary<string, MqttTopic>();
-		private readonly ObservableCollection<MqttTopic> rootTopics = new ObservableCollection<MqttTopic>();
-		private readonly ObservableCollection<MqttContent> messages = new ObservableCollection<MqttContent>();
+		private readonly Dictionary<string, MqttTopic> topics = new();
+		private readonly ObservableCollection<MqttTopic> rootTopics = new();
+		private readonly ObservableCollection<MqttContent> messages = new();
 		private MqttClient mqtt;
 
 		/// <summary>
@@ -236,12 +236,16 @@ namespace Monitor.Model
 		/// <summary>
 		/// Connects to the broker.
 		/// </summary>
-		private void ExecuteConnect()
+		private async void ExecuteConnect()
 		{
 			try
 			{
-				this.mqtt?.Dispose();
-				this.mqtt = null;
+				if (this.mqtt is not null)
+				{
+					await this.mqtt.DisposeAsync();
+					this.mqtt = null;
+				}
+
 				this.State = MqttState.Offline;
 
 				this.mqtt = new MqttClient(this.Host, this.Port, this.Tls, this.UserName, this.Password)
@@ -257,8 +261,12 @@ namespace Monitor.Model
 			}
 			catch (Exception ex)
 			{
-				this.mqtt?.Dispose();
-				this.mqtt = null;
+				if (this.mqtt is not null)
+				{
+					await this.mqtt.DisposeAsync();
+					this.mqtt = null;
+				}
+
 				this.State = MqttState.Offline;
 
 				Log.Exception(ex);
@@ -367,13 +375,25 @@ namespace Monitor.Model
 		/// <summary>
 		/// Closes the connection to the broker.
 		/// </summary>
-		private void ExecuteClose()
+		private async void ExecuteClose()
 		{
-			this.mqtt?.Dispose();
-			this.mqtt = null;
-			this.State = MqttState.Offline;
+			try
+			{
+				if (this.mqtt is not null)
+				{
+					await this.mqtt.DisposeAsync();
+					this.mqtt = null;
+				}
 
-			this.Connect.Changed();
+				this.State = MqttState.Offline;
+
+				this.Connect.Changed();
+			}
+			catch (Exception ex)
+			{
+				Log.Exception(ex);
+				MessageBox.Show(ex.Message);
+			}
 		}
 
 		/// <summary>
@@ -390,7 +410,7 @@ namespace Monitor.Model
 		/// </summary>
 		private async void ExecutePublish()
 		{
-			if (!(this.mqtt is null))
+			if (this.mqtt is not null)
 			{
 				try
 				{
@@ -407,10 +427,26 @@ namespace Monitor.Model
 		/// <summary>
 		/// <see cref="IDisposable.Dispose"/>
 		/// </summary>
+		[Obsolete("Use DisposeAsync instead.")]
 		public void Dispose()
 		{
-			this.mqtt?.Dispose();
-			this.mqtt = null;
+			try
+			{
+				this.DisposeAsync().Wait();
+			}
+			catch (Exception ex)
+			{
+				Log.Exception(ex);
+			}
+		}
+
+		public async Task DisposeAsync()
+		{
+			if (this.mqtt is not null)
+			{
+				await this.mqtt.DisposeAsync();
+				this.mqtt = null;
+			}
 		}
 	}
 }
