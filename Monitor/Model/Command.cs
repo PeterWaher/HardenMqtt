@@ -83,14 +83,7 @@ namespace Monitor.Model
 		{
 			Application.Current?.Dispatcher.Invoke(() =>
 			{
-				try
-				{
-					this.CanExecuteChanged?.Invoke(this, EventArgs.Empty);
-				}
-				catch (Exception ex)
-				{
-					Log.Exception(ex);
-				}
+				this.CanExecuteChanged.Raise(this, EventArgs.Empty);
 			});
 		}
 
