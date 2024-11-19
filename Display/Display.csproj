@@ -27,7 +27,7 @@
     <PackageReference Include="Waher.Security" Version="1.0.11" />
     <PackageReference Include="Waher.Security.EllipticCurves" Version="1.0.10" />
     <PackageReference Include="Waher.Security.SHA3" Version="1.1.0" />
-    <PackageReference Include="Waher.Things" Version="3.0.0" />
+    <PackageReference Include="Waher.Things" Version="3.0.1" />
   </ItemGroup>
 
   <ItemGroup>
