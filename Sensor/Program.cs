@@ -203,7 +203,7 @@ namespace Sensor
 						await RuntimeSettings.SetAsync("MQTT.Password", MqttPassword);
 					}
 
-					if (!(Mqtt is null))
+					if (Mqtt is not null)
 					{
 						await Mqtt.DisposeAsync();
 						Mqtt = null;
@@ -213,7 +213,7 @@ namespace Sensor
 
 					Log.Informational("Connecting to MQTT Broker...", DeviceID);
 
-					TaskCompletionSource<bool> WaitForConnect = new TaskCompletionSource<bool>();
+					TaskCompletionSource<bool> WaitForConnect = new();
 
 					Mqtt = new MqttClient(MqttHost, MqttPort, MqttEncrypted, MqttUserName, MqttPassword);
 
@@ -341,7 +341,7 @@ namespace Sensor
 
 				#region CTRL-Z support
 
-				CancellationTokenSource Operation = new CancellationTokenSource();
+				CancellationTokenSource Operation = new();
 
 				Console.CancelKeyPress += (_, e) =>
 				{
@@ -360,7 +360,7 @@ namespace Sensor
 					PairingInformation Info = await DevicePairing.PairDevice(Mqtt, Cipher, DeviceID,
 						"Sensor", "Display", GetRandomBytes(32), false, Operation.Token);
 
-					if (!(Info is null))
+					if (Info is not null)
 					{
 						PairedToKey = Info.MasterPublicKey;
 						PairedToId = Info.MasterId;
@@ -382,7 +382,7 @@ namespace Sensor
 					{
 						Console.ReadKey(true);
 
-						if (!(SensorData is null))
+						if (SensorData is not null)
 						{
 							Log.Informational("Republishing information on request from user.", DeviceID);
 							await ReportSensorData(SensorData, Mqtt, DeviceID, Cipher, PairedToBin);
@@ -408,13 +408,13 @@ namespace Sensor
 				Timer?.Dispose();
 				Timer = null;
 
-				if (!(Mqtt is null))
+				if (Mqtt is not null)
 				{
 					await Mqtt.DisposeAsync();
 					Mqtt = null;
 				}
 
-				if (!(DBProvider is null))
+				if (DBProvider is not null)
 					await DBProvider.Flush();
 
 				await Types.StopAllModules();
@@ -513,7 +513,7 @@ namespace Sensor
 			await ReportSensorDataUnsecuredInteroperable(SensorData, Mqtt, "HardenMqtt/Unsecured/Interoperable/" + DeviceID, DeviceID);
 			await ReportSensorDataSecuredPublic(SensorData, Mqtt, "HardenMqtt/Secured/Public/" + Base64Url.Encode(Cipher.PublicKey), DeviceID, Cipher);
 
-			if (!(PairedPublicKey is null))
+			if (PairedPublicKey is not null)
 				await ReportSensorDataSecuredConfidential(SensorData, Mqtt, "HardenMqtt/Secured/Confidential/" + Base64Url.Encode(Cipher.PublicKey), DeviceID, Cipher, PairedPublicKey);
 		}
 
@@ -586,8 +586,8 @@ namespace Sensor
 		/// <returns>Interoperable XML</returns>
 		private static string GetInteroperableXml(WeatherInformation SensorData, string DeviceID, byte[] Signature)
 		{
-			List<Field> Result = new List<Field>();
-			ThingReference Ref = new ThingReference(DeviceID);
+			List<Field> Result = [];
+			ThingReference Ref = new(DeviceID);
 
 			Result.Add(new DateTimeField(Ref, SensorData.Timestamp, "Timestamp", SensorData.Timestamp,
 				FieldType.Status, FieldQoS.AutomaticReadout));
@@ -727,13 +727,13 @@ namespace Sensor
 					SensorData.IconUrl, FieldType.Momentary, FieldQoS.AutomaticReadout));
 			}
 
-			if (!(Signature is null))
+			if (Signature is not null)
 			{
 				Result.Add(new StringField(Ref, DateTime.Now, "Signature",
 					Base64Url.Encode(Signature), FieldType.Computed, FieldQoS.AutomaticReadout));
 			}
 
-			SensorData Fields = new SensorData(Result);
+			SensorData Fields = new(Result);
 
 			return Fields.PayloadXml;
 		}
@@ -793,7 +793,7 @@ namespace Sensor
 			await Mqtt.PUBLISH(Topic, MqttQualityOfService.AtMostOnce, true, ToSend);
 		}
 
-		private static readonly SHA3_256 sha3 = new SHA3_256();
+		private static readonly Waher.Security.SHA3.SHA3_256 sha3 = new();
 
 		private static byte[] GetRandomBytes(int N)
 		{

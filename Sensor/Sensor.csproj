@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <PackageIcon>Icons8-Windows-8-Industry-Electrical-Sensor.ico</PackageIcon>
     <ApplicationIcon>Icons8-Windows-8-Industry-Electrical-Sensor.ico</ApplicationIcon>
   </PropertyGroup>

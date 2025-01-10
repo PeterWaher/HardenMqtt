@@ -197,7 +197,7 @@ namespace Display
 						await RuntimeSettings.SetAsync("MQTT.Password", MqttPassword);
 					}
 
-					if (!(Mqtt is null))
+					if (Mqtt is not null)
 					{
 						await Mqtt.DisposeAsync();
 						Mqtt = null;
@@ -207,7 +207,7 @@ namespace Display
 
 					Log.Informational("Connecting to MQTT Broker...", DeviceID);
 
-					TaskCompletionSource<bool> WaitForConnect = new TaskCompletionSource<bool>();
+					TaskCompletionSource<bool> WaitForConnect = new();
 
 					Mqtt = new MqttClient(MqttHost, MqttPort, MqttEncrypted, MqttUserName, MqttPassword);
 
@@ -262,8 +262,8 @@ namespace Display
 
 				#region CTRL-Z support
 
-				CancellationTokenSource Operation = new CancellationTokenSource();
-				AsyncQueue<MqttContent> InputQueue = new AsyncQueue<MqttContent>();
+				CancellationTokenSource Operation = new();
+				AsyncQueue<MqttContent> InputQueue = new();
 
 				Console.CancelKeyPress += (_, e) =>
 				{
@@ -283,7 +283,7 @@ namespace Display
 					PairingInformation Info = await DevicePairing.PairDevice(Mqtt, Cipher, DeviceID,
 						"Display", "Sensor", GetRandomBytes(32), true, Operation.Token);
 
-					if (!(Info is null))
+					if (Info is not null)
 					{
 						PairedToKey = Info.SlavePublicKey;
 						PairedToId = Info.SlaveId;
@@ -350,12 +350,12 @@ namespace Display
 
 				Log.Informational("Display application started... Press CTRL+C to terminate the application.", DeviceID);
 
-				Dictionary<string, int> RowPerField = new Dictionary<string, int>();
+				Dictionary<string, int> RowPerField = [];
 				DateTime Last = DateTime.MinValue;
 				DateTime Current;
 
 				// Make sure the main loop can check the keyboard often, to switch display mode.
-				using Timer CheckKeyboardTimer = new Timer((_) => InputQueue.Add(null), null, 100, 100);
+				using Timer CheckKeyboardTimer = new((_) => InputQueue.Add(null), null, 100, 100);
 
 				while (!Operation.IsCancellationRequested)
 				{
@@ -460,13 +460,13 @@ namespace Display
 
 				Log.Informational("Display application stopping...", DeviceID);
 
-				if (!(Mqtt is null))
+				if (Mqtt is not null)
 				{
 					await Mqtt.DisposeAsync();
 					Mqtt = null;
 				}
 
-				if (!(DBProvider is null))
+				if (DBProvider is not null)
 					await DBProvider.Flush();
 
 				await Types.StopAllModules();
@@ -721,7 +721,7 @@ namespace Display
 				return null;
 
 			string Xml = Encoding.UTF8.GetString(Data);
-			XmlDocument Doc = new XmlDocument();
+			XmlDocument Doc = new();
 			Doc.LoadXml(Xml);
 
 			SensorData Result = SensorClient.ParseFields(Doc.DocumentElement);
@@ -751,7 +751,7 @@ namespace Display
 			if (SensorData is null)
 				return null;
 
-			List<Field> BeforeSignature = new List<Field>();
+			List<Field> BeforeSignature = [];
 			string Signature = null;
 
 			foreach (Field Field in SensorData.Fields)
@@ -835,7 +835,7 @@ namespace Display
 				PrintField(Field.Name, Field.ValueString, RowPerField);
 		}
 
-		private static readonly SHA3_256 sha3 = new SHA3_256();
+		private static readonly Waher.Security.SHA3.SHA3_256 sha3 = new();
 
 		#endregion
 	}
