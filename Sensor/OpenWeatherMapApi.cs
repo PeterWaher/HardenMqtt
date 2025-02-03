@@ -59,7 +59,10 @@ namespace Sensor
 			Uri Uri = new Uri("http://api.openweathermap.org/data/2.5/weather?q=" + Location + "," + 
 				Country + "&units=metric&APPID=" + ApiKey);
 
-			object Obj = await InternetContent.GetAsync(Uri, new KeyValuePair<string, string>("Accept", "application/json"));
+			ContentResponse Content = await InternetContent.GetAsync(Uri, new KeyValuePair<string, string>("Accept", "application/json"));
+			Content.AssertOk();
+
+			object Obj = Content.Decoded;
 			WeatherInformation Result = new WeatherInformation();
 			Result.Timestamp = Result.Readout = DateTime.UtcNow;
 
