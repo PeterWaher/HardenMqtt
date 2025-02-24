@@ -20,13 +20,13 @@ namespace Monitor
 	/// </summary>
 	public partial class MainWindow : Window
 	{
-		private readonly TaskCompletionSource<MqttViewModel> initialized = new TaskCompletionSource<MqttViewModel>();
+		private readonly TaskCompletionSource<MqttViewModel> initialized = new();
 		private FilesProvider dbProvider = null;
 		private bool loaded = false;
 
 		public MainWindow()
 		{
-			InitializeComponent();
+			this.InitializeComponent();
 
 			// First, initialize environment and type inventory. This creates an inventory of types used by the application.
 			// This is important for tasks such as data persistence, for example.
@@ -57,11 +57,11 @@ namespace Monitor
 				Log.Register(new XmlFileEventSink("Events.xml", Path.Combine(Environment.CurrentDirectory, "Events", "Events.xml"), 7));
 				Log.Informational("Setting up database...");
 
-				dbProvider = await FilesProvider.CreateAsync("Database", "Default", 8192, 10000, 8192, Encoding.UTF8, 10000, true, false);
-				Database.Register(dbProvider);
+				this.dbProvider = await FilesProvider.CreateAsync("Database", "Default", 8192, 10000, 8192, Encoding.UTF8, 10000, true, false);
+				Database.Register(this.dbProvider);
 
 				// Repair database, if an inproper shutdown is detected
-				await dbProvider.RepairIfInproperShutdown(string.Empty);
+				await this.dbProvider.RepairIfInproperShutdown(string.Empty);
 
 				// Starting internal modules
 				await Types.StartAllModules(60000);
@@ -84,7 +84,7 @@ namespace Monitor
 			this.dbProvider?.Flush().Wait();
 
 			Types.StopAllModules().Wait();
-			Log.Terminate();
+			Log.TerminateAsync().Wait();
 		}
 
 		private void PasswordBox_PasswordChanged(object sender, RoutedEventArgs e)

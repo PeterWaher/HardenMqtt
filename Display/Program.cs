@@ -269,7 +269,7 @@ namespace Display
 				{
 					e.Cancel = true;
 					Operation.Cancel();
-					InputQueue.Add(null);
+					InputQueue.Queue(null);
 				};
 
 				#endregion
@@ -299,7 +299,7 @@ namespace Display
 
 				Mqtt.OnContentReceived += (sender, e) =>
 				{
-					InputQueue.Add(e);
+					InputQueue.Queue(e);
 					return Task.CompletedTask;
 				};
 
@@ -355,7 +355,7 @@ namespace Display
 				DateTime Current;
 
 				// Make sure the main loop can check the keyboard often, to switch display mode.
-				using Timer CheckKeyboardTimer = new((_) => InputQueue.Add(null), null, 100, 100);
+				using Timer CheckKeyboardTimer = new((_) => InputQueue.Queue(null), null, 100, 100);
 
 				while (!Operation.IsCancellationRequested)
 				{
@@ -470,7 +470,7 @@ namespace Display
 					await DBProvider.Flush();
 
 				await Types.StopAllModules();
-				Log.Terminate();
+				await Log.TerminateAsync();
 			}
 		}
 

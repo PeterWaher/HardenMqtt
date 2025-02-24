@@ -418,7 +418,7 @@ namespace Sensor
 					await DBProvider.Flush();
 
 				await Types.StopAllModules();
-				Log.Terminate();
+				await Log.TerminateAsync();
 			}
 		}
 

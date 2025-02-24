@@ -135,7 +135,7 @@ namespace Troll
 
 					Log.Informational("Connecting to MQTT Broker...", DeviceID);
 
-					TaskCompletionSource<bool> WaitForConnect = new TaskCompletionSource<bool>();
+					TaskCompletionSource<bool> WaitForConnect = new();
 
 					Mqtt = new MqttClient(MqttHost, MqttPort, MqttEncrypted, MqttUserName, MqttPassword);
 
@@ -194,14 +194,14 @@ namespace Troll
 
 				#region CTRL-Z support
 
-				CancellationTokenSource Operation = new CancellationTokenSource();
-				AsyncQueue<MqttContent> InputQueue = new AsyncQueue<MqttContent>();
+				CancellationTokenSource Operation = new();
+				AsyncQueue<MqttContent> InputQueue = new();
 
 				Console.CancelKeyPress += (_, e) =>
 				{
 					e.Cancel = true;
 					Operation.Cancel();
-					InputQueue.Add(null);
+					InputQueue.Queue(null);
 				};
 
 				#endregion
@@ -210,7 +210,7 @@ namespace Troll
 
 				Mqtt.OnContentReceived += (sender, e) =>
 				{
-					InputQueue.Add(e);
+					InputQueue.Queue(e);
 					return Task.CompletedTask;
 				};
 
@@ -286,17 +286,17 @@ namespace Troll
 
 				Log.Informational("Troll application stopping...", DeviceID);
 
-				if (!(Mqtt is null))
+				if (Mqtt is not null)
 				{
 					await Mqtt.DisposeAsync();
 					Mqtt = null;
 				}
 
-				if (!(DBProvider is null))
+				if (DBProvider is not null)
 					await DBProvider.Flush();
 
 				await Types.StopAllModules();
-				Log.Terminate();
+				await Log.TerminateAsync();
 			}
 		}
 
@@ -385,14 +385,14 @@ namespace Troll
 		{
 			Result = null;
 			s = s.Trim();
-			if (!s.StartsWith("{") || !s.EndsWith("}"))
+			if (!s.StartsWith('{') || !s.EndsWith('}'))
 				return false;
 
 			try
 			{
 				object Parsed = JSON.Parse(s);
 				Result = Parsed as Dictionary<string, object>;
-				return !(Result is null);
+				return Result is not null;
 			}
 			catch
 			{
@@ -411,14 +411,14 @@ namespace Troll
 		{
 			Result = null;
 			s = s.Trim();
-			if (!s.StartsWith("[") || !s.EndsWith("]"))
+			if (!s.StartsWith('[') || !s.EndsWith(']'))
 				return false;
 
 			try
 			{
 				object Parsed = JSON.Parse(s);
 				Result = Parsed as Array;
-				return !(Result is null);
+				return Result is not null;
 			}
 			catch
 			{
@@ -437,12 +437,12 @@ namespace Troll
 		{
 			Result = null;
 			s = s.Trim();
-			if (!s.StartsWith("<") || !s.EndsWith(">") || !XML.IsValidXml(s))
+			if (!s.StartsWith('<') || !s.EndsWith('>') || !XML.IsValidXml(s))
 				return false;
 
 			try
 			{
-				XmlDocument Doc = new XmlDocument();
+				XmlDocument Doc = new();
 				Doc.LoadXml(s);
 
 				Result = Doc;
@@ -711,7 +711,7 @@ namespace Troll
 					break;
 
 				case 1: // Change scheme
-					UriBuilder b = new UriBuilder(Link)
+					UriBuilder b = new(Link)
 					{
 						Scheme = Link.Scheme + "x"
 					};
@@ -779,7 +779,7 @@ namespace Troll
 				await PublishRandomBlob(Mqtt, Topic);
 			else
 			{
-				Dictionary<string, object> Object2 = new Dictionary<string, object>();
+				Dictionary<string, object> Object2 = [];
 
 				foreach (KeyValuePair<string, object> P in Object)
 				{
@@ -820,7 +820,7 @@ namespace Troll
 				await PublishRandomBlob(Mqtt, Topic);
 			else
 			{
-				List<object> Array2 = new List<object>();
+				List<object> Array2 = [];
 
 				foreach (object Item in Array)
 				{
@@ -873,8 +873,8 @@ namespace Troll
 
 			if (SensorData?.Fields is null)
 			{
-				StringBuilder sb = new StringBuilder();
-				XmlWriterSettings Settings = new XmlWriterSettings()
+				StringBuilder sb = new();
+				XmlWriterSettings Settings = new()
 				{
 					OmitXmlDeclaration = true
 				};
@@ -888,7 +888,7 @@ namespace Troll
 			}
 			else
 			{
-				List<Field> Fields = new List<Field>();
+				List<Field> Fields = [];
 
 				foreach (Field Field in SensorData.Fields)
 				{
@@ -1227,7 +1227,7 @@ namespace Troll
 			return Hashes.ComputeSHA256HashString(Data2);
 		}
 
-		private static readonly Cache<string, bool> recentlySent = new Cache<string, bool>(int.MaxValue, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
+		private static readonly Cache<string, bool> recentlySent = new(int.MaxValue, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
 
 		#endregion
 
