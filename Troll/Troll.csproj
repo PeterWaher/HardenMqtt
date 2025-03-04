@@ -24,9 +24,9 @@
     <PackageReference Include="Waher.Runtime.Cache" Version="2.0.0" />
     <PackageReference Include="Waher.Runtime.Inventory" Version="1.3.1" />
     <PackageReference Include="Waher.Runtime.Inventory.Loader" Version="1.0.10" />
-    <PackageReference Include="Waher.Runtime.Queue" Version="3.0.1" />
+    <PackageReference Include="Waher.Runtime.Queue" Version="3.1.0" />
     <PackageReference Include="Waher.Runtime.Settings" Version="1.2.0" />
-    <PackageReference Include="Waher.Security" Version="1.0.12" />
+    <PackageReference Include="Waher.Security" Version="1.0.13" />
     <PackageReference Include="Waher.Security.EllipticCurves" Version="1.0.10" />
     <PackageReference Include="Waher.Security.SHA3" Version="1.2.0" />
     <PackageReference Include="Waher.Things" Version="3.2.0" />
