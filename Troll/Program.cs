@@ -133,7 +133,7 @@ namespace Troll
 
 					// Connecting to broker and waiting for connection to complete
 
-					Log.Informational("Connecting to MQTT Broker...", DeviceID);
+					Log.Informational("Connecting to MQTT Broker: " + MqttHost + ":" + MqttPort, DeviceID);
 
 					TaskCompletionSource<bool> WaitForConnect = new();
 
