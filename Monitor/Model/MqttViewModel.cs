@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using Waher.Events;
 using Waher.Networking.MQTT;
+using Waher.Runtime.Collections;
 using Waher.Runtime.Settings;
 
 namespace Monitor.Model
@@ -31,6 +32,7 @@ namespace Monitor.Model
 		private readonly Dictionary<string, MqttTopic> topics = [];
 		private readonly ObservableCollection<MqttTopic> rootTopics = [];
 		private readonly ObservableCollection<MqttContent> messages = [];
+		private readonly ChunkedList<MqttContent> displayQueue = [];
 		private MqttClient mqtt;
 
 		/// <summary>
@@ -308,10 +310,36 @@ namespace Monitor.Model
 
 		private Task Mqtt_OnContentReceived(object Sender, MqttContent Content)
 		{
-			this.LastTopic = Content.Topic;
+			bool UpdateGui;
 
-			Application.Current.Dispatcher.Invoke(() =>
+			lock (this.displayQueue)
 			{
+				UpdateGui = !this.displayQueue.HasFirstItem;
+				this.displayQueue.Add(Content);
+			}
+
+			if (UpdateGui)
+				Application.Current.Dispatcher.BeginInvoke(this.ShowReceivedContent);
+
+			return Task.CompletedTask;
+		}
+
+		private void ShowReceivedContent()
+		{
+			MqttContent Content = null;
+			bool More;
+
+			do
+			{
+				lock (this.displayQueue)
+				{
+					if (!this.displayQueue.HasFirstItem)
+						break;
+
+					Content = this.displayQueue.RemoveFirst();
+					More = this.displayQueue.HasFirstItem;
+				} 
+
 				try
 				{
 					if (Content.Topic == this.SelectedTopic)
@@ -349,9 +377,11 @@ namespace Monitor.Model
 				{
 					Log.Exception(ex);
 				}
-			});
+			}
+			while (More);
 
-			return Task.CompletedTask;
+			if (Content is not null)
+				this.LastTopic = Content.Topic;
 		}
 
 		private static void Insert<T>(ObservableCollection<T> Collection, T NewItem)
