@@ -170,6 +170,7 @@ namespace Sensor
 				// Configuring and connecting to MQTT Server
 
 				bool MqttConnected = false;
+				bool ConnectionError = false;
 
 				do
 				{
@@ -181,7 +182,7 @@ namespace Sensor
 					string MqttUserName = await RuntimeSettings.GetAsync("MQTT.UserName", string.Empty);
 					string MqttPassword = await RuntimeSettings.GetAsync("MQTT.Password", string.Empty);
 
-					if (string.IsNullOrEmpty(MqttHost))
+					if (string.IsNullOrEmpty(MqttHost) || ConnectionError)
 					{
 						Console.Out.WriteLine("MQTT host not configured. Please provide the connection details below. If the default value presented is sufficient, just press ENTER.");
 
@@ -214,11 +215,13 @@ namespace Sensor
 
 					TaskCompletionSource<bool> WaitForConnect = new();
 
+					ConnectionError = false;
 					Mqtt = new MqttClient(MqttHost, MqttPort, MqttEncrypted, MqttUserName, MqttPassword);
 
 					Mqtt.OnConnectionError += (_, e) =>
 					{
 						Log.Error(e.Message, DeviceID);
+						ConnectionError = true;
 						WaitForConnect.TrySetResult(false);
 						return Task.CompletedTask;
 					};
@@ -237,6 +240,7 @@ namespace Sensor
 						{
 							case MqttState.Offline:
 							case MqttState.Error:
+								ConnectionError = true;
 								WaitForConnect.TrySetResult(false);
 								break;
 

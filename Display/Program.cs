@@ -165,6 +165,7 @@ namespace Display
 				// Configuring and connecting to MQTT Server
 
 				bool MqttConnected = false;
+				bool ConnectionError = false;
 
 				do
 				{
@@ -176,7 +177,7 @@ namespace Display
 					string MqttUserName = await RuntimeSettings.GetAsync("MQTT.UserName", string.Empty);
 					string MqttPassword = await RuntimeSettings.GetAsync("MQTT.Password", string.Empty);
 
-					if (string.IsNullOrEmpty(MqttHost))
+					if (string.IsNullOrEmpty(MqttHost) || ConnectionError)
 					{
 						Console.Out.WriteLine("MQTT host not configured. Please provide the connection details below. If the default value presented is sufficient, just press ENTER.");
 
@@ -209,11 +210,13 @@ namespace Display
 
 					TaskCompletionSource<bool> WaitForConnect = new();
 
+					ConnectionError = false;
 					Mqtt = new MqttClient(MqttHost, MqttPort, MqttEncrypted, MqttUserName, MqttPassword);
 
 					Mqtt.OnConnectionError += (_, e) =>
 					{
 						Log.Error(e.Message, DeviceID);
+						ConnectionError = true;
 						WaitForConnect.TrySetResult(false);
 						return Task.CompletedTask;
 					};
@@ -232,6 +235,7 @@ namespace Display
 						{
 							case MqttState.Offline:
 							case MqttState.Error:
+								ConnectionError = true;
 								WaitForConnect.TrySetResult(false);
 								break;
 
@@ -316,7 +320,8 @@ namespace Display
 						5 => "HardenMqtt/Secured/Confidential/" + PairedToKey,
 						_ => string.Empty,
 					};
-				};
+				}
+				;
 
 				async Task ChangeMenu(int Menu)
 				{
@@ -340,7 +345,8 @@ namespace Display
 
 						DisplayMode = Menu;
 					}
-				};
+				}
+				;
 
 				await ChangeMenu(1);
 
