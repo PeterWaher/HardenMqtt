@@ -1,17 +1,17 @@
-﻿using System.Text;
+﻿using Monitor.Model;
+using System;
+using System.IO;
+using System.Text;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using Waher.Events;
+using Waher.Events.Files;
+using Waher.Networking.MQTT;
 using Waher.Persistence;
 using Waher.Persistence.Files;
 using Waher.Runtime.Inventory.Loader;
 using Waher.Runtime.Inventory;
-using System.Threading.Tasks;
-using System;
-using Monitor.Model;
-using Waher.Events.Files;
-using System.IO;
-using Waher.Networking.MQTT;
 
 namespace Monitor
 {
