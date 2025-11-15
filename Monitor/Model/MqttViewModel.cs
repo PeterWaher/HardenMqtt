@@ -22,6 +22,7 @@ namespace Monitor.Model
 		private readonly BindableProperty<bool> trustCertificate;
 		private readonly BindableProperty<string> userName;
 		private readonly BindableProperty<string> password;
+		private readonly BindableProperty<string> subscribeTo;
 		private readonly BindableProperty<MqttState> state;
 		private readonly BindableProperty<bool> connected;
 		private readonly BindableProperty<string> lastTopic;
@@ -47,6 +48,7 @@ namespace Monitor.Model
 			this.trustCertificate = new BindableProperty<bool>(this, nameof(this.TrustCertificate), false);
 			this.userName = new BindableProperty<string>(this, nameof(this.UserName), string.Empty);
 			this.password = new BindableProperty<string>(this, nameof(this.Password), string.Empty);
+			this.subscribeTo = new BindableProperty<string>(this, nameof(this.SubscribeTo), "#");
 
 			this.state = new BindableProperty<MqttState>(this, nameof(this.State), MqttState.Offline);
 			this.connected = new BindableProperty<bool>(this, nameof(this.Connected), false);
@@ -73,6 +75,7 @@ namespace Monitor.Model
 			this.UserName = await RuntimeSettings.GetAsync("MQTT.UserName", this.UserName);
 			this.Password = await RuntimeSettings.GetAsync("MQTT.Password", this.Password);
 			this.TrustCertificate = await RuntimeSettings.GetAsync("MQTT.TrustServer", this.TrustCertificate);
+			this.SubscribeTo = await RuntimeSettings.GetAsync("MQTT.SubscribeTo", this.SubscribeTo);
 		}
 
 		/// <summary>
@@ -127,6 +130,15 @@ namespace Monitor.Model
 		{
 			get => this.password.Value;
 			set => this.password.Value = value;
+		}
+
+		/// <summary>
+		/// Topic to subscribe to.
+		/// </summary>
+		public string SubscribeTo
+		{
+			get => this.subscribeTo.Value;
+			set => this.subscribeTo.Value = value;
 		}
 
 		/// <summary>
@@ -289,14 +301,18 @@ namespace Monitor.Model
 				{
 					try
 					{
+						if (string.IsNullOrEmpty(this.SubscribeTo))
+							this.SubscribeTo = "#";
+
 						await RuntimeSettings.SetAsync("MQTT.Host", this.Host);
 						await RuntimeSettings.SetAsync("MQTT.Port", this.Port);
 						await RuntimeSettings.SetAsync("MQTT.Tls", this.Tls);
 						await RuntimeSettings.SetAsync("MQTT.UserName", this.UserName);
 						await RuntimeSettings.SetAsync("MQTT.Password", this.Password);
 						await RuntimeSettings.SetAsync("MQTT.TrustServer", this.TrustCertificate);
+						await RuntimeSettings.SetAsync("MQTT.SubscribeTo", this.SubscribeTo);
 
-						await this.mqtt.SUBSCRIBE("#");
+						await this.mqtt.SUBSCRIBE(this.SubscribeTo);
 					}
 					catch (Exception ex)
 					{

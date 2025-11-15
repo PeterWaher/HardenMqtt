@@ -35,7 +35,7 @@ namespace Monitor
 			// Setup Event Output to Console window
 			Log.Informational("Monitor application starting...");
 
-			Task.Run(() => this.Init());
+			Task.Run(this.Init);
 
 			this.DataContext = this.initialized.Task.Result;
 			if (this.DataContext is null)

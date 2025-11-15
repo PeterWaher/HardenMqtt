@@ -35,6 +35,8 @@
 				<TextBlock TextWrapping="Wrap"><Run FontWeight="Bold" Text="Note:"/><Run Text=" Password is not handled securely in MQTT."/></TextBlock>
 				<CheckBox IsChecked="{Binding Tls}" IsEnabled="{Binding CanEditConnection}" Content="Connect using TLS." Margin="0,10,0,0"/>
 				<CheckBox IsChecked="{Binding TrustCertificate}" IsEnabled="{Binding CanEditConnection}" Content="Trust certificate." Margin="0,10,0,0"/>
+				<Label Content="Subscribe To:"/>
+				<TextBox Text="{Binding SubscribeTo}" IsEnabled="{Binding CanEditConnection}" ToolTip="Enter the MQTT topic to subscribe to here." />
 				<Button Content="Connect" Margin="0,10,0,0" Command="{Binding Connect}" IsEnabled="{Binding CanEditConnection}"/>
 				<Button Content="Close" Margin="0,10,0,0" Command="{Binding Close}" IsEnabled="{Binding CanEditConnection, Converter={converters:LogicalNot}}"/>
 				<Button Content="Clear" Margin="0,10,0,0" Command="{Binding Clear}"/>
