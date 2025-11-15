@@ -188,11 +188,11 @@ namespace Troll
 				Log.Register(new MqttEventSink("MQTT Event Sink", Mqtt, "HardenMqtt/Events", true));
 				Log.Informational("Troll connected to MQTT.", DeviceID);
 
-				// Configure CTRL+Z to close application gracefully.
+				// Configure CTRL+C to close application gracefully.
 
 				#endregion
 
-				#region CTRL-Z support
+				#region CTRL-C support
 
 				CancellationTokenSource Operation = new();
 				AsyncQueue<MqttContent> InputQueue = new();

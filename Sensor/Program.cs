@@ -17,7 +17,6 @@ using Waher.Runtime.Inventory;
 using Waher.Runtime.Inventory.Loader;
 using Waher.Runtime.Settings;
 using Waher.Security.EllipticCurves;
-using Waher.Security.SHA3;
 using Waher.Things;
 using Waher.Things.SensorData;
 
@@ -335,11 +334,11 @@ namespace Sensor
 					}
 				}, null, 1000, 60000);  // First readout in 1s, then read every 1 minute.
 
-				// Configure CTRL+Z to close application gracefully.
+				// Configure CTRL+C to close application gracefully.
 
 				#endregion
 
-				#region CTRL-Z support
+				#region CTRL-C support
 
 				CancellationTokenSource Operation = new();
 

@@ -256,11 +256,11 @@ namespace Display
 				Log.Register(new MqttEventSink("MQTT Event Sink", Mqtt, "HardenMqtt/Events", true));
 				Log.Informational("Display connected to MQTT.", DeviceID);
 
-				// Configure CTRL+Z to close application gracefully.
+				// Configure CTRL+C to close application gracefully.
 
 				#endregion
 
-				#region CTRL-Z support
+				#region CTRL-C support
 
 				CancellationTokenSource Operation = new();
 				AsyncQueue<MqttContent> InputQueue = new();
@@ -572,7 +572,7 @@ namespace Display
 			Print("3. Interoperable", 20, DisplayMode == 3, TextAlignment.Center);
 			Print("4. Signed", 20, DisplayMode == 4, TextAlignment.Center);
 			Print("5. Confidential", 20, DisplayMode == 5, TextAlignment.Center);
-			Print("CTRL+Z. Quit", 20, TextAlignment.Center);
+			Print("CTRL+C. Quit", 20, TextAlignment.Center);
 
 			Console.Out.WriteLine();
 		}

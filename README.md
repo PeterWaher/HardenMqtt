@@ -60,7 +60,7 @@ provide it once.
 6. Once sampling has begin, pairing is commenced, if pairing with a display has not been performed earlier. Pairing allows the
 sensor to send information confidentially to a specified recipient, without others being able to detect what information has
 been sent. Pairing is done securely over MQTT using `EdDSA`.
-7. The main loop simply waits for you to press `CTRL+Z` to quit the application.
+7. The main loop simply waits for you to press `CTRL+C` to quit the application.
 
 The following topics will be used by the sensor, on the MQTT broker you've selected:
 
@@ -74,7 +74,7 @@ The following topics will be used by the sensor, on the MQTT broker you've selec
 | `HardenMqtt/Secured/Confidential`     | An encrypted version of the cryptographically signed interoperable XML format will be published to this topic. Symmetric key used for encryption is derived using `EdDSA`, and by secure pairing between a sensor and a display. |
 | `HardenMqtt/Pairing`                  | All pairing of sensors with their corresponding displays is done using over this topic. |
 
-**Note**: Pressing any key (except `CTRL+Z`) when the sensor is in the main loop, will trigger a republishing of current sensor
+**Note**: Pressing any key (except `CTRL+C`) when the sensor is in the main loop, will trigger a republishing of current sensor
 data to MQTT. This can be useful if you need to test something quickly, and do not want to wait for the next scheduled samling.
 
 ![Sensor Screen](Images/Sensor.png)
@@ -94,7 +94,7 @@ provide it once.
 4. Pairing is then commenced, if pairing with a sensor has not been performed earlier. Pairing allows the
 display to decrypt information sent by the sensor. Pairing is done securely over MQTT using `EdDSA`.
 5. Subscribing to different topics is then performed, in accordance with what information you want to display.
-6. The main loop simply waits for you to press `CTRL+Z` to quit the application.
+6. The main loop simply waits for you to press `CTRL+C` to quit the application.
 
 You switch mode in the display application, by pressing the `1` to `5` keys, or the `F1` to `F5` keys, as follows:
 

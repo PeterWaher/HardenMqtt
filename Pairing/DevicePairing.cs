@@ -161,7 +161,7 @@ namespace Pairing
 				{
 					while (!Pairing.Completed)
 					{
-						await Task.Delay(100);  // Permits CTRL+Z to cancel token properly. Without delay, you might have to press CTRL+Z two times, as cancellation token cannot be passed on to ReadLine method.
+						await Task.Delay(100);  // Permits CTRL+C to cancel token properly. Without delay, you might have to press CTRL+C two times, as cancellation token cannot be passed on to ReadLine method.
 
 						if (Cancel.IsCancellationRequested)
 							return null;
