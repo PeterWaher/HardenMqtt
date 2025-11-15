@@ -4,11 +4,14 @@
 	/// Represents a bindable property in a view model.
 	/// </summary>
 	/// <typeparam name="T">Property type value.</typeparam>
-	public class BindableProperty<T>
+	/// <param name="Model">View Model to which the bindable property belongs.</param>
+	/// <param name="Name">Name of property</param>
+	/// <param name="Value">Value of property</param>
+	public class BindableProperty<T>(ViewModel Model, string Name, T Value)
 	{
-		private readonly ViewModel model;
-		private readonly string name;
-		private T value;
+		private readonly ViewModel model = Model;
+		private readonly string name = Name;
+		private T value = Value;
 
 		/// <summary>
 		/// Represents a bindable property in a view model.
@@ -18,19 +21,6 @@
 		public BindableProperty(ViewModel Model, string Name)
 			: this(Model, Name, default)
 		{
-		}
-
-		/// <summary>
-		/// Represents a bindable property in a view model.
-		/// </summary>
-		/// <param name="Model">View Model to which the bindable property belongs.</param>
-		/// <param name="Name">Name of property</param>
-		/// <param name="Value">Value of property</param>
-		public BindableProperty(ViewModel Model, string Name, T Value)
-		{
-			this.model = Model;
-			this.name = Name;
-			this.value = Value;
 		}
 
 		/// <summary>

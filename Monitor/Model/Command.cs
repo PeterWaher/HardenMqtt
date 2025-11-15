@@ -32,10 +32,12 @@ namespace Monitor.Model
 	/// <summary>
 	/// Custom bindable command.
 	/// </summary>
-	public class Command : ICommand
+	/// <param name="CanExecute">Method to call to evaluate if command can be executed.</param>
+	/// <param name="Execute">Method to call when command is executed.</param>
+	public class Command(CanExecuteParameterDelegate CanExecute, ExecuteParameterDelegate Execute) : ICommand
 	{
-		private readonly CanExecuteParameterDelegate canExecute;
-		private readonly ExecuteParameterDelegate execute;
+		private readonly CanExecuteParameterDelegate canExecute = CanExecute;
+		private readonly ExecuteParameterDelegate execute = Execute;
 
 		/// <summary>
 		/// Custom bindable command.
@@ -63,17 +65,6 @@ namespace Monitor.Model
 		public Command(ExecuteParameterDelegate Execute)
 			: this(null, Execute)
 		{
-		}
-
-		/// <summary>
-		/// Custom bindable command.
-		/// </summary>
-		/// <param name="CanExecute">Method to call to evaluate if command can be executed.</param>
-		/// <param name="Execute">Method to call when command is executed.</param>
-		public Command(CanExecuteParameterDelegate CanExecute, ExecuteParameterDelegate Execute)
-		{
-			this.canExecute = CanExecute;
-			this.execute = Execute;
 		}
 
 		/// <summary>

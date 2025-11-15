@@ -28,9 +28,9 @@ namespace Monitor.Model
 		private readonly BindableProperty<string> selectedContent;
 		private readonly BindableProperty<MqttQualityOfService> qos;
 		private readonly BindableProperty<bool> retain;
-		private readonly Dictionary<string, MqttTopic> topics = new();
-		private readonly ObservableCollection<MqttTopic> rootTopics = new();
-		private readonly ObservableCollection<MqttContent> messages = new();
+		private readonly Dictionary<string, MqttTopic> topics = [];
+		private readonly ObservableCollection<MqttTopic> rootTopics = [];
+		private readonly ObservableCollection<MqttContent> messages = [];
 		private MqttClient mqtt;
 
 		/// <summary>

@@ -19,7 +19,6 @@ using Waher.Runtime.Inventory.Loader;
 using Waher.Runtime.Queue;
 using Waher.Runtime.Settings;
 using Waher.Security.EllipticCurves;
-using Waher.Security.SHA3;
 using Waher.Things.SensorData;
 
 namespace Display

@@ -42,11 +42,11 @@ namespace Monitor.Converters
 					{
 						try
 						{
-							XmlDocument Xml = new XmlDocument();
+							XmlDocument Xml = new();
 							Xml.LoadXml(s);
 
 							XmlWriterSettings Settings = XML.WriterSettings(true, true);
-							StringBuilder sb = new StringBuilder();
+							StringBuilder sb = new();
 							using XmlWriter Output = XmlWriter.Create(sb, Settings);
 							Xml.Save(Output);
 							Output.Flush();

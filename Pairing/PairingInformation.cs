@@ -139,18 +139,18 @@ namespace Pairing
 			try
 			{
 				string s = Encoding.UTF8.GetString(Binary);
-				if (!(JSON.Parse(s) is Dictionary<string, object> Obj))
+				if (JSON.Parse(s) is not Dictionary<string, object> Obj)
 					return false;
 
 				Obj.Remove("Completed");
 				Obj.Remove("MasterCompleted");
 				Obj.Remove("SlaveCompleted");
 
-				PairingInformation Info = new PairingInformation();
+				PairingInformation Info = new();
 
 				foreach (KeyValuePair<string, object> P in Obj)
 				{
-					if (!(P.Value is string Value))
+					if (P.Value is not string Value)
 					{
 						if (P.Value is null)
 							Value = null;	// Valid value.
@@ -233,7 +233,7 @@ namespace Pairing
 		/// <returns>Data for signatures.</returns>
 		public byte[] GetSignData()
 		{
-			StringBuilder sb = new StringBuilder();
+			StringBuilder sb = new();
 
 			sb.Append(this.Nonce);
 			sb.Append('|');

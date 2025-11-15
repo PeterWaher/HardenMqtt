@@ -8,24 +8,14 @@ namespace Sensor
 	/// <summary>
 	/// Reads weather data from the Open Weather Map API
 	/// </summary>
-	public class OpenWeatherMapApi
+	/// <param name="ApiKey">Default API Key</param>
+	/// <param name="Location">Default Location</param>
+	/// <param name="Country">Default Country</param>
+	public class OpenWeatherMapApi(string ApiKey, string Location, string Country)
 	{
-		private readonly string apiKey;
-		private readonly string location;
-		private readonly string country;
-
-		/// <summary>
-		/// Reads weather data from the Open Weather Map API
-		/// </summary>
-		/// <param name="ApiKey">Default API Key</param>
-		/// <param name="Location">Default Location</param>
-		/// <param name="Country">Default Country</param>
-		public OpenWeatherMapApi(string ApiKey, string Location, string Country)
-		{
-			this.apiKey = ApiKey;
-			this.location = Location;
-			this.country = Country;
-		}
+		private readonly string apiKey = ApiKey;
+		private readonly string location = Location;
+		private readonly string country = Country;
 
 		/// <summary>
 		/// Reads weather data using the default API Key from the default location & country.
@@ -56,17 +46,17 @@ namespace Sensor
 		/// <returns>Weather data.</returns>
 		public static async Task<WeatherInformation> GetData(string ApiKey, string Location, string Country)
 		{
-			Uri Uri = new Uri("http://api.openweathermap.org/data/2.5/weather?q=" + Location + "," + 
+			Uri Uri = new("http://api.openweathermap.org/data/2.5/weather?q=" + Location + "," + 
 				Country + "&units=metric&APPID=" + ApiKey);
 
 			ContentResponse Content = await InternetContent.GetAsync(Uri, new KeyValuePair<string, string>("Accept", "application/json"));
 			Content.AssertOk();
 
 			object Obj = Content.Decoded;
-			WeatherInformation Result = new WeatherInformation();
+			WeatherInformation Result = new();
 			Result.Timestamp = Result.Readout = DateTime.UtcNow;
 
-			if (!(Obj is Dictionary<string, object> Response))
+			if (Obj is not Dictionary<string, object> Response)
 				throw new Exception("Unexpected response from API.");
 
 			if (Response.TryGetValue("dt", out Obj) && Obj is int dt)

@@ -1,6 +1,5 @@
 ﻿using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Diagnostics.CodeAnalysis;
 
 namespace Monitor.Model
 {
@@ -9,7 +8,7 @@ namespace Monitor.Model
 	/// </summary>
 	public class MqttTopic : ViewModel, IComparer<MqttTopic>
 	{
-		private readonly ObservableCollection<MqttTopic> items = new ObservableCollection<MqttTopic>();
+		private readonly ObservableCollection<MqttTopic> items = [];
 
 		/// <summary>
 		/// Model of a topic
