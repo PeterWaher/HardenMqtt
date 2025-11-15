@@ -186,7 +186,7 @@ namespace Display
 						MqttPort = UserInput("MQTT Port", MqttPort, 1, 65535);
 						await RuntimeSettings.SetAsync("MQTT.Port", MqttPort);
 
-						MqttEncrypted = (MqttPort == 8883);
+						MqttEncrypted = MqttPort == 8883;
 						MqttEncrypted = UserInput("Encrypt with TLS", MqttEncrypted);
 						await RuntimeSettings.SetAsync("MQTT.Tls", MqttEncrypted);
 
