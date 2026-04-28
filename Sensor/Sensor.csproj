@@ -17,7 +17,7 @@
     <PackageReference Include="Waher.Events.Console" Version="1.2.2" />
     <PackageReference Include="Waher.Events.MQTT" Version="2.1.2" />
     <PackageReference Include="Waher.Networking.MQTT" Version="3.1.1" />
-    <PackageReference Include="Waher.Networking.XMPP.Sensor" Version="4.1.4" />
+    <PackageReference Include="Waher.Networking.XMPP.Sensor" Version="4.1.5" />
     <PackageReference Include="Waher.Persistence" Version="1.19.0" />
     <PackageReference Include="Waher.Persistence.Files" Version="1.20.0" />
     <PackageReference Include="Waher.Runtime.Inventory" Version="1.4.6" />
@@ -26,7 +26,7 @@
     <PackageReference Include="Waher.Security" Version="1.2.0" />
     <PackageReference Include="Waher.Security.EllipticCurves" Version="1.5.3" />
     <PackageReference Include="Waher.Security.SHA3" Version="1.2.2" />
-    <PackageReference Include="Waher.Things" Version="3.3.0" />
+    <PackageReference Include="Waher.Things" Version="3.3.1" />
   </ItemGroup>
 
   <ItemGroup>
